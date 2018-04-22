@@ -6,7 +6,7 @@
 
 # python
 
-/env
+/.env
 /.tox
 /dist/
 .pytest_cache/

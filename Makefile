@@ -10,9 +10,17 @@ apidoc:
 clean-doc:
 	rm -rf doc/api doc/build doc/doctest
 
-clean: clean-doc
-	rm -rf btrfs_backup.egg-info/ env/ .pytest_cache/ .tox/
+clean:
+	rm -rf *.egg-info/ .pytest_cache .tox/
 	rm -f .coverage
+
+mrproper: clean-doc clean
+	rm -rf .env/
+
+lint:
+	flake8 .
 
 test:
 	ENV=testing pytest
+
+check: lint test
