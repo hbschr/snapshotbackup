@@ -7,6 +7,7 @@ chardet==3.0.4
 coverage==4.5.1
 docutils==0.14
 execnet==1.5.0
+flake8==3.5.0
 idna==2.6
 imagesize==1.0.0
 Jinja2==2.10
@@ -16,6 +17,8 @@ more-itertools==4.1.0
 packaging==17.1
 pluggy==0.6.0
 py==1.5.3
+pycodestyle==2.3.1
+pyflakes==1.6.0
 Pygments==2.2.0
 pyparsing==2.2.0
 pytest==3.5.0
