@@ -1,0 +1,18 @@
+# editors and ides
+
+*~
+/.idea
+
+
+# python
+
+/env
+/.tox
+/dist/
+.pytest_cache/
+*.egg-info/
+*.egg
+*.py[cod]
+__pycache__/
+*.so
+.coverage
