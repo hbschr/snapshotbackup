@@ -16,3 +16,9 @@
 __pycache__/
 *.so
 .coverage
+
+
+# sphinx doc
+doc/api/
+doc/build/
+doc/doctest/
