@@ -8,6 +8,7 @@ from .timestamps import parse_human_readable_relative_dates
 _defaults = {
     'retain_all': '1 day',
     'retain_daily': '1 month',
+    'ignore': '',
 }
 
 
