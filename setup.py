@@ -10,5 +10,7 @@ setup(
     version='0.0.0',
     description='A sample Python project',
     packages=('btrfsbackup',),
-    # install_requires=['peppercorn'],
+    install_requires=[
+        'python-dateutil>=2.7.2',
+    ],
 )
