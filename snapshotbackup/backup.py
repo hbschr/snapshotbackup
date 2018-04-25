@@ -11,7 +11,7 @@ def _get_dirs(path):
     :param path:
     :return list: backups available in `path`
 
-    >>> from btrfsbackup.backup import _get_dirs
+    >>> from snapshotbackup.backup import _get_dirs
     >>> _get_dirs('/tmp')
     [...]
     """

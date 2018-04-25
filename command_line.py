@@ -4,9 +4,9 @@ import argparse
 import logging
 import sys
 
-from btrfsbackup import make_backup, purge_backups
-from btrfsbackup.config import parse_config
-from btrfsbackup.backup import load_backups
+from snapshotbackup import make_backup, purge_backups
+from snapshotbackup.config import parse_config
+from snapshotbackup.backup import load_backups
 
 
 logger = logging.getLogger()
@@ -69,7 +69,7 @@ def list_backups(config):
 
 
 if __name__ == '__main__':
-    logger.debug('btrfsbackup start')
+    logger.debug('snapshotbackup start')
     success = main()
-    logger.debug('btrfsbackup finished with `{}`'.format(success))
+    logger.debug('snapshotbackup finished with `{}`'.format(success))
     sys.exit(not success)   # invert bool for UNIX

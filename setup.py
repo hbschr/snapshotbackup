@@ -6,10 +6,10 @@
 from setuptools import setup
 
 setup(
-    name='btrfsbackup',
+    name='snapshotbackup',
     version='0.0.0',
     description='A sample Python project',
-    packages=('btrfsbackup',),
+    packages=('snapshotbackup',),
     install_requires=[
         'python-dateutil>=2.7.2',
     ],

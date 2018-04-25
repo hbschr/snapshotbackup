@@ -3,7 +3,7 @@ from subprocess import PIPE, Popen
 
 def _shell(*args):
     """
-    >>> from btrfsbackup.filesystem import _shell
+    >>> from snapshotbackup.filesystem import _shell
     >>> isinstance(_shell('true'), bool)
     True
     >>> _shell('true')

@@ -5,16 +5,16 @@ doctest:
 	ENV=testing sphinx-build -b doctest doc doc/doctest
 
 apidoc:
-	sphinx-apidoc -f btrfsbackup -o doc/api
+	sphinx-apidoc -f snapshotbackup -o doc/api
 
 clean-doc:
 	rm -rf doc/api doc/build doc/doctest
 
-clean:
+clean: clean-doc
 	rm -rf *.egg-info/ .pytest_cache .tox/
 	rm -f .coverage
 
-mrproper: clean-doc clean
+mrproper: clean
 	rm -rf .env/
 
 lint:

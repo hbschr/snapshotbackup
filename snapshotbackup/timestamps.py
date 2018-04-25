@@ -14,7 +14,7 @@ class TimestampParseError(Exception):
 def get_timestamp():
     """returns a timezone aware datetime object for `now`
 
-    >>> from btrfsbackup.timestamps import get_timestamp
+    >>> from snapshotbackup.timestamps import get_timestamp
     >>> get_timestamp()
     datetime.datetime(...)
     """
@@ -27,13 +27,13 @@ def parse_timestamp(string):
     :param string:
     :return datetime:
 
-    >>> from btrfsbackup.timestamps import parse_timestamp
+    >>> from snapshotbackup.timestamps import parse_timestamp
     >>> parse_timestamp('1989-11-09')
     datetime.datetime(1989, 11, 9, 0, 0)
     >>> parse_timestamp('some random string')
     Traceback (most recent call last):
     ...
-    btrfsbackup.timestamps.TimestampParseError: ...
+    snapshotbackup.timestamps.TimestampParseError: ...
     """
     try:
         return isoparse(string)
@@ -51,7 +51,7 @@ def is_timestamp(string):
     :param string:
     :return bool: if given string could be parsed as valid timestamp
 
-    >>> from btrfsbackup.timestamps import is_timestamp
+    >>> from snapshotbackup.timestamps import is_timestamp
     >>> is_timestamp('1989-11-09')
     True
     >>> is_timestamp('some random string')
@@ -66,7 +66,7 @@ def is_timestamp(string):
 
 def is_same_hour(date1: datetime, date2: datetime) -> bool:
     """
-    >>> from btrfsbackup.timestamps import is_same_hour
+    >>> from snapshotbackup.timestamps import is_same_hour
     >>> from datetime import datetime
     >>> is_same_hour(datetime(1970, 1, 1, 1), datetime(1970, 1, 1, 1, 59, 59))
     True
@@ -81,7 +81,7 @@ def is_same_hour(date1: datetime, date2: datetime) -> bool:
 
 def is_same_day(date1: datetime, date2: datetime) -> bool:
     """
-    >>> from btrfsbackup.timestamps import is_same_day
+    >>> from snapshotbackup.timestamps import is_same_day
     >>> from datetime import datetime
     >>> is_same_day(datetime(1970, 1, 1), datetime(1970, 1, 1, 23, 59, 59))
     True
@@ -96,7 +96,7 @@ def is_same_day(date1: datetime, date2: datetime) -> bool:
 
 def is_same_week(date1: datetime, date2: datetime) -> bool:
     """
-    >>> from btrfsbackup.timestamps import is_same_week
+    >>> from snapshotbackup.timestamps import is_same_week
     >>> from datetime import datetime
     >>> is_same_week(datetime(1970, 1, 1), datetime(1970, 1, 4))
     True
