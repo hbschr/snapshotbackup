@@ -32,5 +32,13 @@ def rsync(source, target, exclude=''):
     return _shell('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target)
 
 
+def create_subvolume(path):
+    return _shell('btrfs', 'subvolume', 'create', path)
+
+
+def delete_subvolume(path):
+    return _shell('sudo', 'btrfs', 'subvolume', 'delete', path)
+
+
 def make_snapshot(source, target, readonly=False):
     return _shell('btrfs', 'subvolume', 'snapshot', '-r' if readonly else '', source, target)

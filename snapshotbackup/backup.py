@@ -20,18 +20,20 @@ def _get_dirs(path):
 
 
 def load_backups(config):
-    dirs = _get_dirs(config['backups'])
+    path = config['backups']
+    dirs = _get_dirs(path)
     backups = []
     for dir in reversed(dirs):
         if len(backups) == 0:
-            backups.insert(0, Backup(dir, config))
+            backups.insert(0, Backup(dir, path, config))
         else:
-            backups.insert(0, Backup(dir, config, backups[0]))
+            backups.insert(0, Backup(dir, path, config, backups[0]))
     return backups
 
 
 class Backup(object):
     name: str
+    path: str
     config: dict
     datetime: datetime
     retain: bool
@@ -39,8 +41,9 @@ class Backup(object):
     is_weekly: bool = False
     is_last: bool = False
 
-    def __init__(self, name: str, config: dict, next=None):
+    def __init__(self, name: str, path: str, config: dict, next=None):
         self.name = name
+        self.path = path
         self.config = config
         self.datetime = parse_timestamp(name)
         if not next:
