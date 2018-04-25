@@ -14,16 +14,12 @@ logger = logging.getLogger()
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=open, required=True, metavar='filename',
-                        help='use given config file')
+    parser.add_argument('action', choices=['backup', 'b', 'list', 'l', 'purge', 'p'],
+                        help='make backup, list backups or purge backups not held by retention policy')
     parser.add_argument('name',
                         help='section name in config file')
-    parser.add_argument('-b', '--backup', action='store_true',
-                        help='make backup')
-    parser.add_argument('-l', '--list', action='store_true',
-                        help='list backups')
-    parser.add_argument('-p', '--purge', action='store_true',
-                        help='purge backups not held by retention policy')
+    parser.add_argument('-c', '--config', type=open, required=True, metavar='filename',
+                        help='use given config file')
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help='increase verbosity, may be used twice')
     args = parser.parse_args()
@@ -31,19 +27,15 @@ def main():
     config = _load_config(args.config, args.name)
     _init_logger(args.verbose)
 
-    if args.backup:
-        logger.debug(f'make backup w/ config `{config}`')
-        return make_backup(config)
-    elif args.list:
+    if args.action in ['l', 'list']:
         logger.debug(f'list backups w/ config `{config}`')
         return list_backups(config)
-    elif args.purge:
+    elif args.action in ['b', 'backup']:
+        logger.debug(f'make backup w/ config `{config}`')
+        return make_backup(config)
+    elif args.action in ['p', 'purge']:
         logger.debug(f'purge backups w/ config `{config}`')
         return purge_backups(config)
-
-    print('missing argument, either `-b`, `-l` or `-p` is mandatory.', file=sys.stderr)
-    parser.print_help()
-    return False
 
 
 def _init_logger(verbosity):
