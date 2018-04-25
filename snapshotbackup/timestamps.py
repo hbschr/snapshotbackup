@@ -1,3 +1,4 @@
+import dateparser
 from datetime import datetime, timedelta, timezone
 from dateutil.parser import isoparse
 
@@ -43,6 +44,10 @@ def parse_timestamp(string):
     except OverflowError as e:                          # pragma: no cover
         # parsed date exceeds the largest valid C integer
         raise TimestampParseError(str(e), e) from e     # pragma: no cover
+
+
+def parse_human_readable_relative_dates(string: str) -> datetime:
+    return dateparser.parse(string, settings={'RETURN_AS_TIMEZONE_AWARE': True})
 
 
 def is_timestamp(string):

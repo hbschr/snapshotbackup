@@ -61,14 +61,13 @@ class Backup(object):
         return self.datetime > timestamp
 
     def _retain(self):
-        now = self.config['now']
-        retain_all = self.config['retain_all']
-        retain_daily = self.config['retain_daily']
+        retain_all = self.config['retain_all_after']
+        retain_daily = self.config['retain_daily_after']
 
-        if self._is_after(now - retain_all):
+        if self._is_after(retain_all):
             return True
 
-        if self._is_after(now - retain_daily):
+        if self._is_after(retain_daily):
             return self.is_daily
 
         return self.is_weekly

@@ -12,5 +12,6 @@ setup(
     packages=('snapshotbackup',),
     install_requires=[
         'python-dateutil>=2.7.2',
+        'dateparser>=0.7.0',
     ],
 )

@@ -5,6 +5,7 @@ Babel==2.5.3
 certifi==2018.4.16
 chardet==3.0.4
 coverage==4.5.1
+dateparser==0.7.0
 docutils==0.14
 execnet==1.5.0
 flake8==3.5.0
@@ -25,12 +26,15 @@ pytest==3.5.0
 pytest-cache==1.0
 pytest-cov==2.5.1
 pytest-mccabe==0.1
+python-dateutil==2.7.2
 pytz==2018.4
+regex==2018.2.21
 requests==2.18.4
 six==1.11.0
 snowballstemmer==1.2.1
 Sphinx==1.7.3
 sphinxcontrib-websupport==1.0.1
 tox==3.0.0
+tzlocal==1.5.1
 urllib3==1.22
 virtualenv==15.2.0
