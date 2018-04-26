@@ -1,7 +1,7 @@
-from subprocess import run
+from subprocess import PIPE, run
 
 
-def _shell(*args):
+def _shell(*args, silent=False):
     """
     >>> from snapshotbackup.filesystem import _shell
     >>> _shell('true')
@@ -14,20 +14,20 @@ def _shell(*args):
       ...
     FileNotFoundError: ...
     """
-    run(args, check=True)
+    run(args, check=True, stdout=PIPE if silent else None)
 
 
-def rsync(source, target, exclude=''):
-    _shell('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target)
+def rsync(source, target, exclude='', silent=False):
+    _shell('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target, silent=silent)
 
 
-def create_subvolume(path):
-    _shell('btrfs', 'subvolume', 'create', path)
+def create_subvolume(path, silent=False):
+    _shell('btrfs', 'subvolume', 'create', path, silent=silent)
 
 
-def delete_subvolume(path):
-    _shell('sudo', 'btrfs', 'subvolume', 'delete', path)
+def delete_subvolume(path, silent=False):
+    _shell('sudo', 'btrfs', 'subvolume', 'delete', path, silent=silent)
 
 
-def make_snapshot(source, target):
-    _shell('btrfs', 'subvolume', 'snapshot', '-r', source, target)
+def make_snapshot(source, target, silent=False):
+    _shell('btrfs', 'subvolume', 'snapshot', '-r', source, target, silent=silent)
