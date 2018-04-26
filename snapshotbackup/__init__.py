@@ -5,7 +5,7 @@ import sys
 
 
 from .backup import load_backups
-from .filesystem import delete_subvolume, make_snapshot, rsync
+from .filesystem import create_subvolume, delete_subvolume, make_snapshot, rsync
 from .timestamps import get_timestamp
 
 
@@ -32,3 +32,9 @@ def purge_backups(config):
     for purge in purges:
         logger.info(f'purging `{purge.name}` in path `{purge.path}`')
         delete_subvolume(path_join(purge.path, purge.name))
+
+
+def setup_paths(config):
+    sync_target = f'{config["backups"]}/{config["sync_dir"]}'
+    logger.info(f'create subvolume `{sync_target}`')
+    create_subvolume(sync_target)

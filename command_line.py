@@ -4,7 +4,7 @@ import argparse
 import logging
 import sys
 
-from snapshotbackup import make_backup, purge_backups
+from snapshotbackup import make_backup, purge_backups, setup_paths
 from snapshotbackup.config import parse_config
 from snapshotbackup.backup import load_backups
 
@@ -18,12 +18,15 @@ def main():
     _init_logger(args.verbose)
 
     try:
-        if args.action in ['l', 'list']:
-            logger.debug(f'list backups w/ config `{config}`')
-            list_backups(config)
+        if args.action in ['s', 'setup']:
+            logger.debug(f'setup paths w/ config `{config}`')
+            setup_paths(config)
         elif args.action in ['b', 'backup']:
             logger.debug(f'make backup w/ config `{config}`')
             make_backup(config)
+        elif args.action in ['l', 'list']:
+            logger.debug(f'list backups w/ config `{config}`')
+            list_backups(config)
         elif args.action in ['p', 'purge']:
             logger.debug(f'purge backups w/ config `{config}`')
             purge_backups(config)
@@ -36,8 +39,9 @@ def main():
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['backup', 'b', 'list', 'l', 'purge', 'p'],
-                        help='make backup, list backups or purge backups not held by retention policy')
+    parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
+                        help='setup backup paths, make backup, list backups'
+                             'or purge backups not held by retention policy')
     parser.add_argument('name',
                         help='section name in config file')
     parser.add_argument('-c', '--config', type=open, required=True, metavar='filename',

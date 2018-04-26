@@ -22,22 +22,26 @@ example `config.ini`
 # retain_all = '1 day'
 # retain_daily = '1 month'
 
-[disc1]
-source = /path/to/disc1
-backups = /backups/disc1
+[data1]
+source = /path/to/data1
+backups = /backups/data1
 
-[disc2]
-source = /path/to/disc2
-backups = /backups/disc2
+[data2]
+source = /path/to/data2
+backups = /backups/data2
 ignore = /.cache
 ```
 
 
-setup
+usage
 --
 
-- make sure that `backups` is on a `btrfs` filesystem
-- create a subvolume `current` inside `backups` w/ `btrfs subvolume create {backups}/current`
+```
+./command_line -c config.ini setup data1
+./command_line -c config.ini backup data1
+./command_line -c config.ini list data1
+./command_line -c config.ini purge data1
+```
 
 
 dev env
