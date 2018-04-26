@@ -10,11 +10,10 @@ from .timestamps import get_timestamp
 
 
 logger = logging.getLogger()
-sync_dir = 'current'
 
 
 def make_backup(config):
-    sync_target = f'{config["backups"]}/{sync_dir}'
+    sync_target = f'{config["backups"]}/{config["sync_dir"]}'
     logger.info(f'syncing `{config["source"]}` to `{sync_target}`')
     try:
         rsync(config['source'], sync_target, config['ignore'])
