@@ -1,4 +1,5 @@
 import logging
+from os import makedirs
 from os.path import join as path_join
 import subprocess
 import sys
@@ -35,6 +36,7 @@ def purge_backups(config):
 
 
 def setup_paths(config):
+    makedirs(config['backups'], exist_ok=True)
     sync_target = f'{config["backups"]}/{config["sync_dir"]}'
     logger.info(f'create subvolume `{sync_target}`')
     create_subvolume(sync_target)
