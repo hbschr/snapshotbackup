@@ -1,5 +1,6 @@
 import logging
 from os.path import join as path_join
+import subprocess
 import sys
 
 
@@ -13,13 +14,17 @@ sync_dir = 'current'
 
 
 def make_backup(config):
-    sync_target = '{}/{}'.format(config['backups'], sync_dir)
-    if rsync(config['source'], sync_target, config['ignore']):
-        timestamp = get_timestamp().isoformat()
-        snapshot_target = '{}/{}'.format(config['backups'], timestamp)
-        return make_snapshot(sync_target, snapshot_target, True)
-    else:
-        sys.exit('backup interrupted, `{}` may be inconsistent'.format(sync_target))
+    sync_target = f'{config["backups"]}/{sync_dir}'
+    logger.info(f'syncing `{config["source"]}` to `{sync_target}`')
+    try:
+        rsync(config['source'], sync_target, config['ignore'])
+    except subprocess.CalledProcessError as e:
+        logger.error(e)
+        sys.exit(f'backup interrupted or failed, `{sync_target}` may be in an inconsistent state')
+    timestamp = get_timestamp().isoformat()
+    snapshot_target = f'{config["backups"]}/{timestamp}'
+    logger.info(f'snapshotting `{sync_target}` to `{snapshot_target}`')
+    make_snapshot(sync_target, snapshot_target, True)
 
 
 def purge_backups(config):

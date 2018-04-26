@@ -1,44 +1,33 @@
-from subprocess import PIPE, Popen
+from subprocess import run
 
 
 def _shell(*args):
     """
     >>> from snapshotbackup.filesystem import _shell
-    >>> isinstance(_shell('true'), bool)
-    True
     >>> _shell('true')
-    True
     >>> _shell('false')
-    False
+    Traceback (most recent call last):
+      ...
+    subprocess.CalledProcessError: ...
     >>> _shell('not-a-command-whae5roo') != ''
     Traceback (most recent call last):
       ...
     FileNotFoundError: ...
     """
-    try:
-        process = Popen(args, stdout=PIPE, stderr=PIPE)
-        output, error = process.communicate()
-        returncode = process.returncode
-    except OSError as e:
-        raise e
-
-    return True if returncode == 0 else False
-    # todo: throw custom error object `shellerror` w/ contains `output` and/or `error`
-    # raise error.decode('utf-8') if (error != b'') else output.decode('utf-8')
+    run(args, check=True)
 
 
 def rsync(source, target, exclude=''):
-    """todo"""
-    return _shell('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target)
+    _shell('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target)
 
 
 def create_subvolume(path):
-    return _shell('btrfs', 'subvolume', 'create', path)
+    _shell('btrfs', 'subvolume', 'create', path)
 
 
 def delete_subvolume(path):
-    return _shell('sudo', 'btrfs', 'subvolume', 'delete', path)
+    _shell('sudo', 'btrfs', 'subvolume', 'delete', path)
 
 
 def make_snapshot(source, target, readonly=False):
-    return _shell('btrfs', 'subvolume', 'snapshot', '-r' if readonly else '', source, target)
+    _shell('btrfs', 'subvolume', 'snapshot', '-r' if readonly else '', source, target)

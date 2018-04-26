@@ -17,15 +17,21 @@ def main():
     config = _load_config(args.config, args.name)
     _init_logger(args.verbose)
 
-    if args.action in ['l', 'list']:
-        logger.debug(f'list backups w/ config `{config}`')
-        return list_backups(config)
-    elif args.action in ['b', 'backup']:
-        logger.debug(f'make backup w/ config `{config}`')
-        return make_backup(config)
-    elif args.action in ['p', 'purge']:
-        logger.debug(f'purge backups w/ config `{config}`')
-        return purge_backups(config)
+    try:
+        if args.action in ['l', 'list']:
+            logger.debug(f'list backups w/ config `{config}`')
+            list_backups(config)
+        elif args.action in ['b', 'backup']:
+            logger.debug(f'make backup w/ config `{config}`')
+            make_backup(config)
+        elif args.action in ['p', 'purge']:
+            logger.debug(f'purge backups w/ config `{config}`')
+            purge_backups(config)
+    except FileNotFoundError as e:
+        logger.error(f'file `{e.filename}` not found, maybe missing software?')
+        return False
+    else:
+        return True
 
 
 def _parse_args():
@@ -65,7 +71,6 @@ def list_backups(config):
               f'\t{"retain_all" if retain_all else "retain_daily" if retain_daily else "        "}'
               f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
               f'\t{"purge candidate" if backup.purge else ""}')
-    return True
 
 
 if __name__ == '__main__':
