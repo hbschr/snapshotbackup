@@ -28,7 +28,7 @@ def make_backup(config):
 
 def purge_backups(config):
     backups = load_backups(config)
-    purges = [backup for backup in backups if not backup.retain]
+    purges = [backup for backup in backups if backup.purge]
     for purge in purges:
         logger.info(f'purging `{purge.name}` in path `{purge.path}`')
         delete_subvolume(path_join(purge.path, purge.name))
