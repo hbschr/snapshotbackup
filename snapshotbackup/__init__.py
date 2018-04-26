@@ -23,7 +23,7 @@ def make_backup(config):
     timestamp = get_timestamp().isoformat()
     snapshot_target = f'{config["backups"]}/{timestamp}'
     logger.info(f'snapshotting `{sync_target}` to `{snapshot_target}`')
-    make_snapshot(sync_target, snapshot_target, True)
+    make_snapshot(sync_target, snapshot_target)
 
 
 def purge_backups(config):

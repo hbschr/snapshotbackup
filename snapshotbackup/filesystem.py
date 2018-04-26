@@ -29,5 +29,5 @@ def delete_subvolume(path):
     _shell('sudo', 'btrfs', 'subvolume', 'delete', path)
 
 
-def make_snapshot(source, target, readonly=False):
-    _shell('btrfs', 'subvolume', 'snapshot', '-r' if readonly else '', source, target)
+def make_snapshot(source, target):
+    _shell('btrfs', 'subvolume', 'snapshot', '-r', source, target)
