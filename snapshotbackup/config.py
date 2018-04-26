@@ -9,7 +9,7 @@ _defaults = {
     'retain_all': '1 day',
     'retain_daily': '1 month',
     'ignore': '',
-    'sync_dir': 'current',
+    'sync_dir': '.sync',
 }
 
 
