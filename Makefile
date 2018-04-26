@@ -2,7 +2,7 @@ doc: doctest apidoc
 	sphinx-build -b html doc doc/build
 
 doctest:
-	ENV=testing sphinx-build -b doctest doc doc/doctest
+	sphinx-build -b doctest doc doc/doctest
 
 apidoc:
 	sphinx-apidoc -f snapshotbackup -o doc/api
