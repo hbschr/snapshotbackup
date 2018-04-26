@@ -21,6 +21,6 @@ lint:
 	flake8 .
 
 test:
-	ENV=testing pytest
+	pytest
 
 check: lint test
