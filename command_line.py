@@ -13,17 +13,7 @@ logger = logging.getLogger()
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['backup', 'b', 'list', 'l', 'purge', 'p'],
-                        help='make backup, list backups or purge backups not held by retention policy')
-    parser.add_argument('name',
-                        help='section name in config file')
-    parser.add_argument('-c', '--config', type=open, required=True, metavar='filename',
-                        help='use given config file')
-    parser.add_argument('-v', '--verbose', action='count', default=0,
-                        help='increase verbosity, may be used twice')
-    args = parser.parse_args()
-
+    args = _parse_args()
     config = _load_config(args.config, args.name)
     _init_logger(args.verbose)
 
@@ -36,6 +26,19 @@ def main():
     elif args.action in ['p', 'purge']:
         logger.debug(f'purge backups w/ config `{config}`')
         return purge_backups(config)
+
+
+def _parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('action', choices=['backup', 'b', 'list', 'l', 'purge', 'p'],
+                        help='make backup, list backups or purge backups not held by retention policy')
+    parser.add_argument('name',
+                        help='section name in config file')
+    parser.add_argument('-c', '--config', type=open, required=True, metavar='filename',
+                        help='use given config file')
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help='increase verbosity, may be used twice')
+    return parser.parse_args()
 
 
 def _init_logger(verbosity):
@@ -56,12 +59,17 @@ def _load_config(file, section):
 def list_backups(config):
     backups = load_backups(config)
     for backup in backups:
-        print(backup)
+        retain_all = backup.is_inside_retain_all_interval
+        retain_daily = backup.is_inside_retain_daily_interval
+        print(f'{backup.name}'
+              f'\t{"retain_all" if retain_all else "retain_daily" if retain_daily else "        "}'
+              f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
+              f'\t{"purge candidate" if backup.purge else ""}')
     return True
 
 
 if __name__ == '__main__':
     logger.debug('snapshotbackup start')
     success = main()
-    logger.debug('snapshotbackup finished with `{}`'.format(success))
+    logger.debug(f'snapshotbackup finished with `{success}`')
     sys.exit(not success)   # invert bool for UNIX

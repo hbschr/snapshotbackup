@@ -36,41 +36,33 @@ class Backup(object):
     path: str
     config: dict
     datetime: datetime
-    retain: bool
+    is_last: bool = False
     is_daily: bool = False
     is_weekly: bool = False
-    is_last: bool = False
+    is_inside_retain_all_interval: bool
+    is_inside_retain_daily_interval: bool
+    purge: bool = False
 
     def __init__(self, name: str, path: str, config: dict, next=None):
         self.name = name
         self.path = path
         self.config = config
         self.datetime = parse_timestamp(name)
+        self.is_inside_retain_all_interval = self._is_after(config['retain_all_after'])
+        self.is_inside_retain_daily_interval = self._is_after(config['retain_daily_after'])
         if not next:
             self.is_last = True
         else:
             self.is_daily = not is_same_day(self.datetime, next.datetime)
             self.is_weekly = not is_same_week(self.datetime, next.datetime)
-        self.retain = self.is_last or self._retain()
-
-    def __str__(self) -> str:
-        return '{}\t{}\t{}\t{}\t{}'.format(self.name,
-                                           'daily' if self.is_daily else '',
-                                           'weekly' if self.is_weekly else '',
-                                           'last' if self.is_last else '',
-                                           'retain' if self.retain else '')
+            self.purge = not self._retain()
 
     def _is_after(self, timestamp):
         return self.datetime > timestamp
 
     def _retain(self):
-        retain_all = self.config['retain_all_after']
-        retain_daily = self.config['retain_daily_after']
-
-        if self._is_after(retain_all):
+        if self.is_inside_retain_all_interval:
             return True
-
-        if self._is_after(retain_daily):
+        if self.is_inside_retain_daily_interval:
             return self.is_daily
-
         return self.is_weekly
