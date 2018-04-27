@@ -20,16 +20,16 @@ def main():
     try:
         if args.action in ['s', 'setup']:
             logger.debug(f'setup paths w/ config `{config}`')
-            setup_paths(config)
+            setup_paths(config, silent=args.silent)
         elif args.action in ['b', 'backup']:
             logger.debug(f'make backup w/ config `{config}`')
-            make_backup(config)
+            make_backup(config, silent=args.silent)
         elif args.action in ['l', 'list']:
             logger.debug(f'list backups w/ config `{config}`')
             list_backups(config)
         elif args.action in ['p', 'purge']:
             logger.debug(f'purge backups w/ config `{config}`')
-            purge_backups(config)
+            purge_backups(config, silent=args.silent)
     except FileNotFoundError as e:
         logger.error(f'file `{e.filename}` not found, maybe missing software?')
         return False
@@ -41,11 +41,13 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
                         help='setup backup paths, make backup, list backups'
-                             'or purge backups not held by retention policy')
+                             ' or purge backups not held by retention policy')
     parser.add_argument('name',
                         help='section name in config file')
     parser.add_argument('-c', '--config', type=open, required=True, metavar='filename',
                         help='use given config file')
+    parser.add_argument('-s', '--silent', action='store_true',
+                        help='suppress output on stdout')
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         help='increase verbosity, may be used twice')
     return parser.parse_args()
