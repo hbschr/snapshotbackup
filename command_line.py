@@ -6,9 +6,8 @@ import os
 import signal
 import sys
 
-from snapshotbackup import make_backup, purge_backups, setup_paths
+from snapshotbackup import list_backups, make_backup, purge_backups, setup_paths
 from snapshotbackup.config import parse_config
-from snapshotbackup.backup import load_backups
 
 
 logger = logging.getLogger()
@@ -65,17 +64,6 @@ def _init_logger(verbosity):
 def _load_config(file, section):
     logger.debug(f'parse config file `{file}`, section `{section}`')
     return parse_config(file, section)
-
-
-def list_backups(config):
-    backups = load_backups(config)
-    for backup in backups:
-        retain_all = backup.is_inside_retain_all_interval
-        retain_daily = backup.is_inside_retain_daily_interval
-        print(f'{backup.name}'
-              f'\t{"retain_all" if retain_all else "retain_daily" if retain_daily else "        "}'
-              f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
-              f'\t{"purge candidate" if backup.purge else ""}')
 
 
 def _signal_handler(signal, frame):

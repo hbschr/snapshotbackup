@@ -33,6 +33,17 @@ def make_backup(config, silent=False):
     make_snapshot(sync_target, snapshot_target, silent=silent)
 
 
+def list_backups(config):
+    backups = load_backups(config)
+    for backup in backups:
+        retain_all = backup.is_inside_retain_all_interval
+        retain_daily = backup.is_inside_retain_daily_interval
+        print(f'{backup.name}'
+              f'\t{"retain_all" if retain_all else "retain_daily" if retain_daily else "        "}'
+              f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
+              f'\t{"purge candidate" if backup.purge else ""}')
+
+
 def purge_backups(config, silent=False):
     """delete all backups for given configuration which are not held by retention policy."""
     backups = load_backups(config)
