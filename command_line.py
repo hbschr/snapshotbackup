@@ -41,7 +41,7 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
                         help='setup backup paths, make backup, list backups'
-                             'or purge backups not held by retention policy')
+                             ' or purge backups not held by retention policy')
     parser.add_argument('name',
                         help='section name in config file')
     parser.add_argument('-c', '--config', type=open, required=True, metavar='filename',
