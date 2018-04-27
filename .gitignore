@@ -1,11 +1,9 @@
 # editors and ides
-
 *~
 /.idea
 
 
 # python
-
 /.env
 /.tox
 /dist/
@@ -22,3 +20,8 @@ __pycache__/
 doc/api/
 doc/build/
 doc/doctest/
+
+
+# demo
+/demo/btrfs.img
+/demo/backups
