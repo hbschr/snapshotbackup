@@ -2,6 +2,8 @@
 
 import argparse
 import logging
+import os
+import signal
 import sys
 
 from snapshotbackup import make_backup, purge_backups, setup_paths
@@ -12,11 +14,8 @@ from snapshotbackup.backup import load_backups
 logger = logging.getLogger()
 
 
-def main():
-    args = _parse_args()
+def main(args):
     config = _load_config(args.config, args.name)
-    _init_logger(args.verbose)
-
     try:
         if args.action in ['s', 'setup']:
             logger.debug(f'setup paths w/ config `{config}`')
@@ -79,8 +78,18 @@ def list_backups(config):
               f'\t{"purge candidate" if backup.purge else ""}')
 
 
+def _signal_handler(signal, frame):
+    sys.exit(f'got signal `{signal}`, exit')
+
+
 if __name__ == '__main__':
-    logger.debug('snapshotbackup start')
-    success = main()
-    logger.debug(f'snapshotbackup finished with `{success}`')
-    sys.exit(not success)   # invert bool for UNIX
+    try:
+        signal.signal(signal.SIGTERM, _signal_handler)
+        args = _parse_args()
+        _init_logger(args.verbose)
+        logger.debug(f'snapshotbackup start w/ pid `{os.getpid()}`')
+        success = main(args)
+        logger.debug(f'snapshotbackup finished with `{success}`')
+        sys.exit(not success)  # invert bool for UNIX
+    except KeyboardInterrupt:
+        sys.exit('keyboard interrupt, exit')
