@@ -14,6 +14,7 @@ logger = logging.getLogger()
 
 
 def make_backup(config, silent=False):
+    """make a backup for given configuration."""
     sync_target = f'{config["backups"]}/{config["sync_dir"]}'
     logger.info(f'syncing `{config["source"]}` to `{sync_target}`')
     try:
@@ -28,6 +29,7 @@ def make_backup(config, silent=False):
 
 
 def purge_backups(config, silent=False):
+    """delete all backups for given configuration which are not held by retention policy."""
     backups = load_backups(config)
     purges = [backup for backup in backups if backup.purge]
     for purge in purges:
@@ -36,6 +38,7 @@ def purge_backups(config, silent=False):
 
 
 def setup_paths(config, silent=False):
+    """setup backup paths for given configuration."""
     makedirs(config['backups'], exist_ok=True)
     sync_target = f'{config["backups"]}/{config["sync_dir"]}'
     logger.info(f'create subvolume `{sync_target}`')
