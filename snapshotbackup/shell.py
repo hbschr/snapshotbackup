@@ -10,7 +10,7 @@ def _shell(*args, silent=False):
     :raise subprocess.CalledProcessError: if process exits with a non-zero exit code
     :raise FileNotFoundError: if command cannot be found
 
-    >>> from snapshotbackup.filesystem import _shell
+    >>> from snapshotbackup.shell import _shell
     >>> _shell('true')
     >>> _shell('false')
     Traceback (most recent call last):

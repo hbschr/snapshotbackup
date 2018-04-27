@@ -6,7 +6,7 @@ import sys
 
 
 from .backup import load_backups
-from .filesystem import create_subvolume, delete_subvolume, make_snapshot, rsync
+from .shell import create_subvolume, delete_subvolume, make_snapshot, rsync
 from .timestamps import get_timestamp
 
 
