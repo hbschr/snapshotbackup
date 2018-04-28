@@ -1,5 +1,5 @@
 from os import remove
-from os.path import join as join
+from os.path import join
 
 
 _lockfilename = '.sync_lock'
@@ -21,12 +21,19 @@ class Lock(object):
 
     :raise LockError: when lockfile already exists
 
-    usage:
-        try:
-            with Lock(path):
-                # do something
-        except LockError:
-            # couldn't do anything, already locked
+    >>> import tempfile
+    >>> from snapshotbackup import Lock, LockError
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     with Lock(path):
+    ...         pass
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     with Lock(path):
+    ...         try:
+    ...             with Lock(path):
+    ...                 pass
+    ...         except LockError as e:
+    ...             print(e)
+    LockError: ...
     """
 
     _lockfile: str
