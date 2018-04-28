@@ -12,6 +12,7 @@ clean-doc:
 
 clean: clean-doc
 	rm -rf *.egg-info/ .pytest_cache .tox/
+	rm -rf */__pycache__
 	rm -f .coverage
 
 mrproper: clean
