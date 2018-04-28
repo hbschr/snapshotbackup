@@ -26,19 +26,50 @@ def load_backups(config):
     :return list: list of `Backup`
     """
     path = config['backups']
+    retain_all_after = config['retain_all_after']
+    retain_daily_after = config['retain_daily_after']
     dirs = _get_dirs(path)
     backups = []
     for dir in reversed(dirs):
         if len(backups) == 0:
-            backups.insert(0, Backup(dir, path, config))
+            backups.insert(0, Backup(dir, path, retain_all_after, retain_daily_after))
         else:
-            backups.insert(0, Backup(dir, path, config, backups[0]))
+            backups.insert(0, Backup(dir, path, retain_all_after, retain_daily_after, next=backups[0]))
     return backups
 
 
 class Backup(object):
     """Used as a container for all metadata attached to a finished backup.
 
+    >>> from snapshotbackup.backup import Backup
+    >>> from datetime import datetime
+    >>> retain_all = datetime(1970, 3, 1)
+    >>> retain_daily = datetime(1970, 2, 1)
+    >>> b4 = Backup('1970-04-02', '/tmp', retain_all, retain_daily)
+    >>> b3 = Backup('1970-03-02', '/tmp', retain_all, retain_daily, next=b4)
+    >>> b2 = Backup('1970-02-02', '/tmp', retain_all, retain_daily, next=b3)
+    >>> b1 = Backup('1970-01-02', '/tmp', retain_all, retain_daily, next=b2)
+    >>> b0 = Backup('1970-01-01', '/tmp', retain_all, retain_daily, next=b1)
+    >>> b0.purge
+    True
+    >>> b0.is_weekly
+    False
+    >>> b1.purge
+    False
+    >>> b1.is_weekly
+    True
+    >>> b2.purge
+    False
+    >>> b2.is_daily
+    True
+    >>> b2.is_inside_retain_daily_interval
+    True
+    >>> b3.purge
+    False
+    >>> b3.is_daily
+    True
+    >>> b3.is_inside_retain_all_interval
+    True
     """
 
     name: str
@@ -46,9 +77,6 @@ class Backup(object):
 
     path: str
     """basepath this backup resides in"""
-
-    config: dict
-    """copy of config dictionary"""
 
     datetime: datetime
     """when this backup was finished"""
@@ -71,20 +99,20 @@ class Backup(object):
     purge: bool = False
     """if this backup should be purged by retention policy"""
 
-    def __init__(self, name: str, path: str, config: dict, next=None):
+    def __init__(self, name: str, path: str, retain_all_after: datetime, retain_daily_after: datetime, next=None):
         """initialize a backup object.
 
         :param name str: name of this backup, also a iso timestamp
         :param path str: path where this backup resides
-        :param config dict: config object for this backup
+        :param retain_all datetime: backup will not be purged if it is after this timestamp
+        :param retain_daily datetime: backup will not be purged if it is after this timestamp and a daily
         :param next Backup: successive backup object
         """
         self.name = name
         self.path = path
-        self.config = config
         self.datetime = parse_timestamp(name)
-        self.is_inside_retain_all_interval = self._is_after(config['retain_all_after'])
-        self.is_inside_retain_daily_interval = self._is_after(config['retain_daily_after'])
+        self.is_inside_retain_all_interval = self._is_after(retain_all_after)
+        self.is_inside_retain_daily_interval = self._is_after(retain_daily_after)
         if not next:
             self.is_last = True
         else:
