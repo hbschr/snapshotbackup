@@ -9,7 +9,6 @@ _defaults = {
     'retain_all': '1 day',
     'retain_daily': '1 month',
     'ignore': '',
-    'sync_dir': '.sync',
 }
 
 
@@ -28,7 +27,6 @@ def parse_config(filename, section):
         'source': config[section]['source'],
         'backups': config[section]['backups'],
         'ignore': config[section]['ignore'],
-        'sync_dir': config[section]['sync_dir'],
         'retain_all_after': parse_human_readable_relative_dates(config.get(section, 'retain_all')),
         'retain_daily_after': parse_human_readable_relative_dates(config.get(section, 'retain_daily')),
     }

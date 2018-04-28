@@ -12,11 +12,12 @@ from .timestamps import get_timestamp
 
 
 logger = logging.getLogger()
+_sync_dir = '.sync'
 
 
 def make_backup(config, silent=False):
     """make a backup for given configuration."""
-    sync_target = f'{config["backups"]}/{config["sync_dir"]}'
+    sync_target = f'{config["backups"]}/{_sync_dir}'
     logger.info(f'syncing `{config["source"]}` to `{sync_target}`')
     try:
         with Lock(config['backups']):
