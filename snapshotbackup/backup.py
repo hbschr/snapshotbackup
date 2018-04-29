@@ -17,6 +17,7 @@ def _get_dirs(path):
     """
     for root, dirs, files in walk(path):
         return [dir for dir in dirs if is_timestamp(dir)]
+    return []
 
 
 def load_backups(config):
