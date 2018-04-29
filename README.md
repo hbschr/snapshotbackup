@@ -40,20 +40,10 @@ usage
 --
 
 ```
-./command_line -c config.ini setup data1
-./command_line -c config.ini backup data1
-./command_line -c config.ini list data1
-./command_line -c config.ini purge data1
-```
-
-
-dev env
-==
-
-```
-virtualenv .env -p python3
-. .env/bin/activate
-pip install -r requirements.txt
+snapshotbackup -c config.ini setup data1
+snapshotbackup -c config.ini backup data1
+snapshotbackup -c config.ini list data1
+snapshotbackup -c config.ini purge data1
 ```
 
 
@@ -74,6 +64,18 @@ make -C demo clean
 ```
 
 please read `demo/Makefile` and `demo/config.ini` to understand what's happening.
+
+
+dev env
+==
+
+```
+virtualenv .env -p python3
+. .env/bin/activate
+pip install -r requirements.txt
+```
+
+use `./dev.py` instead of `snapshotbackup`.
 
 
 that's all

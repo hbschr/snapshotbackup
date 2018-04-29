@@ -6,6 +6,7 @@
 # python
 /.env
 /.tox
+/build
 /dist/
 .pytest_cache/
 *.egg-info/

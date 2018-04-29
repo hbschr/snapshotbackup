@@ -4,7 +4,7 @@ from dateutil.parser import isoparse
 
 
 class TimestampParseError(Exception):
-    def __init__(self, message, error):
+    def __init__(self, message, error=None):
         super().__init__(message)
         self.error = error
 
@@ -13,7 +13,9 @@ class TimestampParseError(Exception):
 
 
 def get_timestamp():
-    """returns a timezone aware datetime object for `now`
+    """returns a timezone aware `datetime` object for `now`.
+
+    :return datetime:
 
     >>> from snapshotbackup.timestamps import get_timestamp
     >>> get_timestamp()
@@ -23,10 +25,11 @@ def get_timestamp():
 
 
 def parse_timestamp(string):
-    """
+    """parse an iso timestamp string, return corresponding `datetime` object.
 
-    :param string:
-    :return datetime:
+    :param string str: iso timestamp
+    :return datetime datetime:
+    :raise TimestampParseError:
 
     >>> from snapshotbackup.timestamps import parse_timestamp
     >>> parse_timestamp('1989-11-09')
@@ -47,13 +50,30 @@ def parse_timestamp(string):
 
 
 def parse_human_readable_relative_dates(string: str) -> datetime:
-    return dateparser.parse(string, settings={'RETURN_AS_TIMEZONE_AWARE': True})
+    """parse human readable relative dates.
+
+    :param string str:
+    :return datetime datetime:
+    :raise TimestampParseError:
+
+    >>> from snapshotbackup.timestamps import parse_human_readable_relative_dates
+    >>> parse_human_readable_relative_dates('1 day ago')
+    datetime.datetime(...)
+    >>> parse_human_readable_relative_dates('anytime')
+    Traceback (most recent call last):
+    ...
+    snapshotbackup.timestamps.TimestampParseError: ...
+    """
+    date = dateparser.parse(string, settings={'RETURN_AS_TIMEZONE_AWARE': True})
+    if date:
+        return date
+    raise TimestampParseError(f'could not parse `{string}`')
 
 
 def is_timestamp(string):
-    """
+    """test if given string is a valid iso timestamp.
 
-    :param string:
+    :param string str:
     :return bool: if given string could be parsed as valid timestamp
 
     >>> from snapshotbackup.timestamps import is_timestamp
@@ -70,12 +90,17 @@ def is_timestamp(string):
 
 
 def is_same_hour(date1: datetime, date2: datetime) -> bool:
-    """
+    """test if given datetime objects are in the same hour.
+
+    :param date1 datetime:
+    :param date2 datetime:
+    :return bool:
+
     >>> from snapshotbackup.timestamps import is_same_hour
     >>> from datetime import datetime
     >>> is_same_hour(datetime(1970, 1, 1, 1), datetime(1970, 1, 1, 1, 59, 59))
     True
-    >>> is_same_hour(datetime(1970, 1, 1, 1), datetime(1970, 1, 2))
+    >>> is_same_hour(datetime(1970, 1, 1, 1), datetime(1970, 1, 1, 2))
     False
     >>> is_same_hour(datetime(1970, 1, 1, 1), datetime(1970, 1, 2, 1))
     False
@@ -85,7 +110,12 @@ def is_same_hour(date1: datetime, date2: datetime) -> bool:
 
 
 def is_same_day(date1: datetime, date2: datetime) -> bool:
-    """
+    """test if given datetime objects are on the same day.
+
+    :param date1 datetime:
+    :param date2 datetime:
+    :return bool:
+
     >>> from snapshotbackup.timestamps import is_same_day
     >>> from datetime import datetime
     >>> is_same_day(datetime(1970, 1, 1), datetime(1970, 1, 1, 23, 59, 59))
@@ -100,7 +130,12 @@ def is_same_day(date1: datetime, date2: datetime) -> bool:
 
 
 def is_same_week(date1: datetime, date2: datetime) -> bool:
-    """
+    """test if given datetime objects are in the same week.
+
+    :param date1 datetime:
+    :param date2 datetime:
+    :return bool:
+
     >>> from snapshotbackup.timestamps import is_same_week
     >>> from datetime import datetime
     >>> is_same_week(datetime(1970, 1, 1), datetime(1970, 1, 4))
