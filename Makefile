@@ -17,6 +17,7 @@ clean: clean-doc
 
 mrproper: clean
 	rm -rf .env/
+	rm -rf build/ dist/
 
 lint:
 	flake8 .
