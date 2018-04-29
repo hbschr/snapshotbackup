@@ -101,7 +101,7 @@ def _signal_handler(signal, frame):
     sys.exit(f'got signal `{signal}`, exit')
 
 
-def _main_switch(args): # noqa: C901
+def _main_switch(args):  # noqa: C901
     config = _load_config(args.config, args.name)
     try:
         if args.action in ['s', 'setup']:
