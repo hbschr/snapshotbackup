@@ -1,7 +1,7 @@
 isofile := btrfs.img
 isosize := 500M
 mnt_dir := backups
-script  := ../command_line.py
+script  := ../dev.py
 opts    :=
 
 help:
@@ -24,6 +24,7 @@ list:
 purge:
 	$(script) $(opts) -c config.ini purge demo
 
+.IGNORE: clean
 clean:
 	sudo umount $(mnt_dir)
 	rmdir $(mnt_dir)
