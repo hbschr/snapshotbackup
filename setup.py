@@ -14,4 +14,9 @@ setup(
         'python-dateutil>=2.7.2',
         'dateparser>=0.7.0',
     ],
+    entry_points={
+        'console_scripts': [
+            'snapshotbackup=snapshotbackup:main',
+        ],
+    },
 )
