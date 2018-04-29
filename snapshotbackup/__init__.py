@@ -61,7 +61,7 @@ def purge_backups(config, silent=False):
 def setup_paths(config, silent=False):
     """setup backup paths for given configuration."""
     makedirs(config['backups'], exist_ok=True)
-    sync_target = f'{config["backups"]}/{config["sync_dir"]}'
+    sync_target = f'{config["backups"]}/{_sync_dir}'
     logger.info(f'create subvolume `{sync_target}`')
     create_subvolume(sync_target, silent=silent)
 
