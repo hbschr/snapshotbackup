@@ -8,12 +8,13 @@ import sys
 
 from snapshotbackup import list_backups, make_backup, purge_backups, setup_paths
 from snapshotbackup.config import parse_config
+from snapshotbackup.lock import LockPathError
 
 
 logger = logging.getLogger()
 
 
-def main(args):
+def main(args):     # noqa: C901
     config = _load_config(args.config, args.name)
     try:
         if args.action in ['s', 'setup']:
@@ -30,7 +31,8 @@ def main(args):
             purge_backups(config, silent=args.silent)
     except FileNotFoundError as e:
         logger.error(f'file `{e.filename}` not found, maybe missing software?')
-        return False
+    except LockPathError as e:
+        logger.error(e)
     else:
         return True
 
@@ -75,9 +77,9 @@ if __name__ == '__main__':
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
         _init_logger(args.verbose)
-        logger.debug(f'snapshotbackup start w/ pid `{os.getpid()}`')
+        logger.info(f'snapshotbackup start w/ pid `{os.getpid()}`')
         success = main(args)
-        logger.debug(f'snapshotbackup finished with `{success}`')
+        logger.info(f'snapshotbackup finished with `{success}`')
         sys.exit(not success)  # invert bool for UNIX
     except KeyboardInterrupt:
         sys.exit('keyboard interrupt, exit')

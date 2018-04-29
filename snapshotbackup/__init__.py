@@ -6,7 +6,7 @@ import sys
 
 
 from .backup import load_backups
-from .lock import Lock, LockError
+from .lock import Lock, LockedError
 from .shell import create_subvolume, delete_subvolume, make_snapshot, rsync
 from .timestamps import get_timestamp
 
@@ -25,7 +25,7 @@ def make_backup(config, silent=False):
     except subprocess.CalledProcessError as e:
         logger.error(e)
         sys.exit(f'backup interrupted or failed, `{sync_target}` may be in an inconsistent state')
-    except LockError as e:
+    except LockedError as e:
         logger.warning(e)
         sys.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
     timestamp = get_timestamp().isoformat()

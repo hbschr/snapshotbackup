@@ -1,11 +1,11 @@
 from os import remove
-from os.path import join
+from os.path import dirname, join
 
 
 _lockfilename = '.sync_lock'
 
 
-class LockError(Exception):
+class LockedError(Exception):
     lockfile: str
 
     def __init__(self, lockfile):
@@ -13,16 +13,28 @@ class LockError(Exception):
         self.message = f'cannot lock, `{self.lockfile}` already exists'
 
     def __str__(self):
-        return f'LockError: {self.message}'
+        return f'LockedError: {self.message}'
+
+
+class LockPathError(Exception):
+    path: str
+
+    def __init__(self, path):
+        self.path = path
+        self.message = f'cannot create lock, `{self.path}` not found'
+
+    def __str__(self):
+        return f'LockPathError: {self.message}'
 
 
 class Lock(object):
     """lockfile as context manager
 
-    :raise LockError: when lockfile already exists
+    :raise LockedError: when lockfile already exists
+    :raise LockPathError: when lockfile cannot be created (missing dir)
 
     >>> import tempfile
-    >>> from snapshotbackup import Lock, LockError
+    >>> from snapshotbackup import Lock, LockedError
     >>> with tempfile.TemporaryDirectory() as path:
     ...     with Lock(path):
     ...         pass
@@ -31,9 +43,9 @@ class Lock(object):
     ...         try:
     ...             with Lock(path):
     ...                 pass
-    ...         except LockError as e:
+    ...         except LockedError as e:
     ...             print(e)
-    LockError: ...
+    LockedError: ...
     """
 
     _lockfile: str
@@ -49,11 +61,14 @@ class Lock(object):
     def __enter__(self):
         """enter locked context
 
-        :raise LockError: when already locked
+        :raise LockedError: when already locked
         """
         if self._is_locked():
-            raise LockError(self._lockfile)
-        open(self._lockfile, 'w').close()
+            raise LockedError(self._lockfile)
+        try:
+            open(self._lockfile, 'w').close()
+        except FileNotFoundError as e:
+            raise LockPathError(dirname(self._lockfile))
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         """exit locked context, lockfile will be removed"""
