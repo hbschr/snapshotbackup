@@ -29,6 +29,8 @@ def main(args):     # noqa: C901
         elif args.action in ['p', 'purge']:
             logger.debug(f'purge backups w/ config `{config}`')
             purge_backups(config, silent=args.silent)
+    except NotADirectoryError as e:
+        logger.error(f'not a directory: `{e}`')
     except FileNotFoundError as e:
         logger.error(f'file `{e.filename}` not found, maybe missing software?')
     except LockPathError as e:

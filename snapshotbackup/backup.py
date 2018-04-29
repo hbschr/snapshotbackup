@@ -1,5 +1,6 @@
 from datetime import datetime
 from os import walk
+from os.path import isdir
 
 
 from .timestamps import is_same_day, is_same_week, is_timestamp, parse_timestamp
@@ -10,11 +11,14 @@ def _get_dirs(path):
 
     :param path str:
     :return list: backups available in `path`
+    :raise NotADirectoryError: if `path` is no directory
 
     >>> from snapshotbackup.backup import _get_dirs
     >>> _get_dirs('/tmp')
     [...]
     """
+    if not isdir(path):
+        raise NotADirectoryError(path)
     for root, dirs, files in walk(path):
         return [dir for dir in dirs if is_timestamp(dir)]
     return []
