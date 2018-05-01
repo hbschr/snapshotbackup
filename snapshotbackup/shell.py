@@ -2,30 +2,9 @@ import logging
 import subprocess
 from subprocess import PIPE, run
 
+from .exceptions import CommandNotFoundError, SyncFailedError
 
 logger = logging.getLogger()
-
-
-class CommandNotFoundError(Exception):
-    """127 - command not found"""
-    command: str
-
-    def __init__(self, command):
-        self.command = command
-
-    def __str__(self):
-        return f'Command not found: `{self.command}`'
-
-
-class SyncFailedError(Exception):
-    """sync interrupted"""
-    target: str
-
-    def __init__(self, target):
-        self.target = target
-
-    def __str__(self):
-        return f'Sync interrupted: `{self.target}`'
 
 
 def _shell(*args, silent=False):
@@ -44,7 +23,7 @@ def _shell(*args, silent=False):
     subprocess.CalledProcessError: ...
     >>> _shell('not-a-command-whae5roo')
     Traceback (most recent call last):
-    snapshotbackup.shell.CommandNotFoundError: ...
+    snapshotbackup.exceptions.CommandNotFoundError: ...
     """
     try:
         run(args, check=True, stdout=PIPE if silent else None)

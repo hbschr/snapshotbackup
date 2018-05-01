@@ -2,18 +2,8 @@ from datetime import datetime
 from os import walk
 from os.path import isdir
 
-
+from .exceptions import BackupDirError
 from .timestamps import is_same_day, is_same_week, is_timestamp, parse_timestamp
-
-
-class BackupDirError(Exception):
-    dir: str
-
-    def __init__(self, dir):
-        self.dir = dir
-
-    def __str__(self):
-        return f'BackupDirError: `{self.dir}`'
 
 
 def _get_dirs(path):
@@ -31,7 +21,7 @@ def _get_dirs(path):
     >>> with tempfile.TemporaryDirectory() as path:
     ...     _get_dirs(join(path, 'nope'))
     Traceback (most recent call last):
-    snapshotbackup.backup.BackupDirError: ...
+    snapshotbackup.exceptions.BackupDirError: ...
     """
     if not isdir(path):
         raise BackupDirError(path)

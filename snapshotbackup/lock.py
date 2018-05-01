@@ -1,28 +1,9 @@
 from os import remove
 from os.path import dirname, join
 
+from .exceptions import LockedError, LockPathError
 
 _lockfilename = '.sync_lock'
-
-
-class LockedError(Exception):
-    lockfile: str
-
-    def __init__(self, lockfile):
-        self.lockfile = lockfile
-
-    def __str__(self):
-        return f'LockedError: cannot lock, `{self.lockfile}` already exists'
-
-
-class LockPathError(Exception):
-    path: str
-
-    def __init__(self, path):
-        self.path = path
-
-    def __str__(self):
-        return f'LockPathError: cannot create lock, `{self.path}` not found'
 
 
 class Lock(object):
@@ -49,7 +30,7 @@ class Lock(object):
     ...     with Lock(join(path, 'nope')):
     ...         pass
     Traceback (most recent call last):
-    snapshotbackup.lock.LockPathError: ...
+    snapshotbackup.exceptions.LockPathError: ...
     """
 
     _lockfile: str
