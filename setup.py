@@ -7,11 +7,13 @@ from setuptools import setup
 
 setup(
     name='snapshotbackup',
-    version='0.0.0',
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
     description='A sample Python project',
     packages=('snapshotbackup',),
     install_requires=[
         'dateparser>=0.7.0',
+        'setuptools-scm>=2.0.0',
         'python-dateutil>=2.7.2',
         'pytz>=2018.4',  # needed by `dateparser`
     ],
