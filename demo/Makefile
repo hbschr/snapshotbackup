@@ -4,6 +4,8 @@ mnt_dir := backups
 script  := ../dev.py
 opts    :=
 
+.NOTPARALLEL:
+
 help:
 	@echo 'no user-friendly help here, please consult `demo/Makefile` and `demo/config.ini` and have fun!'
 
@@ -29,3 +31,5 @@ clean:
 	sudo umount $(mnt_dir)
 	rmdir $(mnt_dir)
 	rm $(isofile)
+
+test: setup backup list purge clean
