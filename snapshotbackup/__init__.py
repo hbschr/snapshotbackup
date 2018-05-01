@@ -1,17 +1,17 @@
 import argparse
+import configparser
 import logging
 import os
 from os import makedirs
 from os.path import join as path_join
 import signal
-import subprocess
 import sys
 
 
-from .backup import load_backups
+from .backup import load_backups, BackupDirError
 from .config import parse_config
 from .lock import Lock, LockedError, LockPathError
-from .shell import create_subvolume, delete_subvolume, make_snapshot, rsync
+from .shell import create_subvolume, delete_subvolume, make_snapshot, rsync, CommandNotFoundError, SyncFailedError
 from .timestamps import get_timestamp
 
 
@@ -23,15 +23,8 @@ def make_backup(config, silent=False):
     """make a backup for given configuration."""
     sync_target = f'{config["backups"]}/{_sync_dir}'
     logger.info(f'syncing `{config["source"]}` to `{sync_target}`')
-    try:
-        with Lock(config['backups']):
-            rsync(config['source'], sync_target, exclude=config['ignore'], silent=silent)
-    except subprocess.CalledProcessError as e:
-        logger.error(e)
-        sys.exit(f'backup interrupted or failed, `{sync_target}` may be in an inconsistent state')
-    except LockedError as e:
-        logger.warning(e)
-        sys.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
+    with Lock(config['backups']):
+        rsync(config['source'], sync_target, exclude=config['ignore'], silent=silent)
     timestamp = get_timestamp().isoformat()
     snapshot_target = f'{config["backups"]}/{timestamp}'
     logger.info(f'snapshotting `{sync_target}` to `{snapshot_target}`')
@@ -102,8 +95,8 @@ def _signal_handler(signal, frame):
 
 
 def _main_switch(args):  # noqa: C901
-    config = _load_config(args.config, args.name)
     try:
+        config = _load_config(args.config, args.name)
         if args.action in ['s', 'setup']:
             logger.debug(f'setup paths w/ config `{config}`')
             setup_paths(config, silent=args.silent)
@@ -116,12 +109,20 @@ def _main_switch(args):  # noqa: C901
         elif args.action in ['p', 'purge']:
             logger.debug(f'purge backups w/ config `{config}`')
             purge_backups(config, silent=args.silent)
-    except NotADirectoryError as e:
-        logger.error(f'not a directory: `{e}`')
-    except FileNotFoundError as e:
-        logger.error(f'file `{e.filename}` not found, maybe missing software?')
+    except BackupDirError as e:
+        logger.error(f'not a directory: `{e.dir}`')
+    except CommandNotFoundError as e:
+        logger.error(e)
+        sys.exit(127)
+    except LockedError as e:
+        logger.warning(e)
+        sys.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
     except LockPathError as e:
         logger.error(e)
+    except configparser.NoSectionError as e:
+        sys.exit(f'no configuration for `{e.section}` found')
+    except SyncFailedError as e:
+        sys.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
     else:
         return True
 

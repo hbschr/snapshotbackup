@@ -6,6 +6,16 @@ from os.path import isdir
 from .timestamps import is_same_day, is_same_week, is_timestamp, parse_timestamp
 
 
+class BackupDirError(Exception):
+    dir: str
+
+    def __init__(self, dir):
+        self.dir = dir
+
+    def __str__(self):
+        return f'BackupDirError: `{self.dir}`'
+
+
 def _get_dirs(path):
     """get list of directories in `path` which can be parsed as timestamps.
 
@@ -13,12 +23,18 @@ def _get_dirs(path):
     :return list: backups available in `path`
     :raise NotADirectoryError: if `path` is no directory
 
+    >>> import tempfile
+    >>> from os.path import join
     >>> from snapshotbackup.backup import _get_dirs
     >>> _get_dirs('/tmp')
     [...]
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     _get_dirs(join(path, 'nope'))
+    Traceback (most recent call last):
+    snapshotbackup.backup.BackupDirError: ...
     """
     if not isdir(path):
-        raise NotADirectoryError(path)
+        raise BackupDirError(path)
     for root, dirs, files in walk(path):
         return [dir for dir in dirs if is_timestamp(dir)]
     return []

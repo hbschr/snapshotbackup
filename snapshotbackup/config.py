@@ -1,5 +1,4 @@
 import configparser
-import sys
 
 
 from .timestamps import parse_human_readable_relative_dates
@@ -18,11 +17,12 @@ def parse_config(filename, section):
     :param filename str: config file path
     :param section str: section in ini file to use
     :return dict:
+    :raise configparser.NoSectionError: when given `section` is not found
     """
     config = configparser.ConfigParser(defaults=_defaults)
     config.read_file(filename)
     if not config.has_section(section):
-        sys.exit(f'no configuration for `{section}` found')
+        raise configparser.NoSectionError(section)
     return {
         'source': config[section]['source'],
         'backups': config[section]['backups'],
