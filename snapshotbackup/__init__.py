@@ -3,6 +3,7 @@ import logging
 import os
 from os import makedirs
 from os.path import join as path_join
+from setuptools_scm import get_version
 import signal
 import subprocess
 import sys
@@ -77,8 +78,10 @@ def _parse_args():
                         help='use given config file')
     parser.add_argument('-s', '--silent', action='store_true',
                         help='suppress output on stdout')
-    parser.add_argument('-v', '--verbose', action='count', default=0,
-                        help='increase verbosity, may be used twice')
+    parser.add_argument('-d', '--debug', action='count', default=0,
+                        help='lower logging threshold, may be used twice')
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {get_version()}',
+                        help='print version number and exit')
     return parser.parse_args()
 
 
@@ -130,7 +133,7 @@ def main():
     try:
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
-        _init_logger(args.verbose)
+        _init_logger(args.debug)
         logger.info(f'snapshotbackup start w/ pid `{os.getpid()}`')
         success = _main_switch(args)
         logger.info(f'snapshotbackup finished with `{success}`')
