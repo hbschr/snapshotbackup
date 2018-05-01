@@ -21,7 +21,7 @@ def _get_dirs(path):
 
     :param path str:
     :return list: backups available in `path`
-    :raise NotADirectoryError: if `path` is no directory
+    :raise BackupDirError: if `path` is no directory
 
     >>> import tempfile
     >>> from os.path import join
