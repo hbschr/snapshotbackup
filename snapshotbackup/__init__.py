@@ -2,12 +2,11 @@ import argparse
 import configparser
 import logging
 import os
+import signal
+import sys
 from os import makedirs
 from os.path import join as path_join
 from setuptools_scm import get_version
-import signal
-import sys
-
 
 from .backup import load_backups, BackupDirError
 from .config import parse_config
