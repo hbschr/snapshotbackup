@@ -66,7 +66,7 @@ def _parse_args():
                              ' or purge backups not held by retention policy')
     parser.add_argument('name',
                         help='section name in config file')
-    parser.add_argument('-c', '--config', type=open, required=True, metavar='filename',
+    parser.add_argument('-c', '--config', type=open, metavar='filename',
                         help='use given config file')
     parser.add_argument('-s', '--silent', action='store_true',
                         help='suppress output on stdout')
@@ -92,18 +92,19 @@ def _init_logger(log_level=0):
     logging.basicConfig(level=level)
 
 
-def _load_config(file, section):
-    logger.debug(f'parse config file `{file}`, section `{section}`')
-    return parse_config(file, section)
-
-
 def _signal_handler(signal, frame):
     sys.exit(f'got signal `{signal}`, exit')
 
 
 def _main_switch(args):  # noqa: C901
     try:
-        config = _load_config(args.config, args.name)
+        config = parse_config(args.name, file=args.config)
+    except FileNotFoundError as e:
+        sys.exit(f'configuration file `{e.filename}` not found')
+    except configparser.NoSectionError as e:
+        sys.exit(f'no configuration for `{e.section}` found')
+
+    try:
         if args.action in ['s', 'setup']:
             logger.debug(f'setup paths w/ config `{config}`')
             setup_paths(config, silent=args.silent)
@@ -126,8 +127,6 @@ def _main_switch(args):  # noqa: C901
         sys.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
     except LockPathError as e:
         logger.error(e)
-    except configparser.NoSectionError as e:
-        sys.exit(f'no configuration for `{e.section}` found')
     except SyncFailedError as e:
         sys.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
     else:
