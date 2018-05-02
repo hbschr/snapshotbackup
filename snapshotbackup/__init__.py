@@ -77,10 +77,15 @@ def _parse_args():
     return parser.parse_args()
 
 
-def _init_logger(verbosity):
-    if verbosity == 0:
+def _init_logger(log_level=0):
+    """increase log level
+
+    :param log_level int: `0` - warning, `1` - info, `2` - debug
+    :return:
+    """
+    if log_level == 0:
         level = logging.WARNING
-    elif verbosity == 1:
+    elif log_level == 1:
         level = logging.INFO
     else:
         level = logging.DEBUG
@@ -133,7 +138,7 @@ def main():
     try:
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
-        _init_logger(args.debug)
+        _init_logger(log_level=args.debug)
         logger.info(f'snapshotbackup start w/ pid `{os.getpid()}`')
         success = _main_switch(args)
         logger.info(f'snapshotbackup finished with `{success}`')
