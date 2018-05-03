@@ -1,6 +1,12 @@
 language: python
 python: '3.6'
+sudo: required
 install: pip install -r requirements.txt
-script:
-    - make check 
-    - tox
+jobs:
+    include:
+        - stage: Run unit tests
+          script: make check
+        - stage: Run demo
+          script: make -f Makefile.demo test
+        - stage: Run tox
+          script: tox
