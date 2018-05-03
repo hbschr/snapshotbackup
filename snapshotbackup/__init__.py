@@ -21,6 +21,7 @@ _sync_dir = '.sync'
 
 def make_backup(config, silent=False):
     """make a backup for given configuration."""
+    logger.debug(f'make backup w/ config `{config}`')
     sync_target = f'{config["backups"]}/{_sync_dir}'
     logger.info(f'syncing `{config["source"]}` to `{sync_target}`')
     with Lock(config['backups']):
@@ -32,6 +33,7 @@ def make_backup(config, silent=False):
 
 
 def list_backups(config):
+    logger.debug(f'list backups w/ config `{config}`')
     backups = load_backups(config)
     for backup in backups:
         retain_all = backup.is_inside_retain_all_interval
@@ -44,6 +46,7 @@ def list_backups(config):
 
 def purge_backups(config, silent=False):
     """delete all backups for given configuration which are not held by retention policy."""
+    logger.debug(f'purge backups w/ config `{config}`')
     backups = load_backups(config)
     purges = [backup for backup in backups if backup.purge]
     for purge in purges:
@@ -53,6 +56,7 @@ def purge_backups(config, silent=False):
 
 def setup_paths(config, silent=False):
     """setup backup paths for given configuration."""
+    logger.debug(f'setup paths w/ config `{config}`')
     makedirs(config['backups'], exist_ok=True)
     sync_target = f'{config["backups"]}/{_sync_dir}'
     logger.info(f'create subvolume `{sync_target}`')
@@ -92,45 +96,49 @@ def _init_logger(log_level=0):
     logging.basicConfig(level=level)
 
 
-def _signal_handler(signal, frame):
-    sys.exit(f'got signal `{signal}`, exit')
+def _exit(error_message=None):
+    if error_message is None:
+        logger.info(f'exit without errors')
+        sys.exit()
+    logger.error(f'exit with error `{error_message}`')
+    sys.exit(error_message)
 
 
-def _main_switch(args):  # noqa: C901
+def _signal_handler(signal):
+    _exit(f'got signal {signal}')
+
+
+def _main(configfile, configsection, action, silent=False):  # noqa: C901
     try:
-        config = parse_config(args.name, file=args.config)
+        config = parse_config(configsection, file=configfile)
     except FileNotFoundError as e:
-        sys.exit(f'configuration file `{e.filename}` not found')
+        _exit(f'configuration file `{e.filename}` not found')
     except configparser.NoSectionError as e:
-        sys.exit(f'no configuration for `{e.section}` found')
+        _exit(f'no configuration for `{e.section}` found')
 
     try:
-        if args.action in ['s', 'setup']:
-            logger.debug(f'setup paths w/ config `{config}`')
-            setup_paths(config, silent=args.silent)
-        elif args.action in ['b', 'backup']:
-            logger.debug(f'make backup w/ config `{config}`')
-            make_backup(config, silent=args.silent)
-        elif args.action in ['l', 'list']:
-            logger.debug(f'list backups w/ config `{config}`')
+        if action in ['s', 'setup']:
+            setup_paths(config, silent=silent)
+        elif action in ['b', 'backup']:
+            make_backup(config, silent=silent)
+        elif action in ['l', 'list']:
             list_backups(config)
-        elif args.action in ['p', 'purge']:
-            logger.debug(f'purge backups w/ config `{config}`')
-            purge_backups(config, silent=args.silent)
+        elif action in ['p', 'purge']:
+            purge_backups(config, silent=silent)
     except BackupDirError as e:
-        logger.error(f'not a directory: `{e.dir}`')
+        _exit(f'not a directory: `{e.dir}`')
     except CommandNotFoundError as e:
-        logger.error(e)
-        sys.exit(127)
+        _exit(f'command `{e.command}` not found, mayhap missing software?')
+    except KeyboardInterrupt as e:
+        _exit('keyboard interrupt')
     except LockedError as e:
-        logger.warning(e)
-        sys.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
+        _exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
     except LockPathError as e:
-        logger.error(e)
+        _exit(e)
     except SyncFailedError as e:
-        sys.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
+        _exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
     else:
-        return True
+        _exit()
 
 
 def main():
@@ -138,9 +146,8 @@ def main():
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
         _init_logger(log_level=args.debug)
-        logger.info(f'snapshotbackup start w/ pid `{os.getpid()}`')
-        success = _main_switch(args)
-        logger.info(f'snapshotbackup finished with `{success}`')
-        sys.exit(not success)  # invert bool for UNIX
-    except KeyboardInterrupt:
-        sys.exit('keyboard interrupt, exit')
+        logger.info(f'start w/ pid `{os.getpid()}`')
+        _main(configfile=args.config, configsection=args.name, action=args.action, silent=args.silent)
+    except Exception as e:
+        logger.exception(e)
+        _exit('uncaught exception')
