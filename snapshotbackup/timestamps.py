@@ -34,12 +34,10 @@ def parse_timestamp(string):
     """
     try:
         return isoparse(string)
-    except ValueError as e:
-        # invalid date
-        raise TimestampParseError(str(e), e) from e
-    except OverflowError as e:                          # pragma: no cover
-        # parsed date exceeds the largest valid C integer
-        raise TimestampParseError(str(e), e) from e     # pragma: no cover
+    except (ValueError, OverflowError) as e:
+        # ValueError: invalid date
+        # OverflowError: parsed date exceeds the largest valid C integer
+        raise TimestampParseError(str(e), error=e)
 
 
 def parse_human_readable_relative_dates(string: str) -> datetime:

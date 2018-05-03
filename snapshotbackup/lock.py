@@ -20,12 +20,10 @@ class Lock(object):
     ...         pass
     >>> with tempfile.TemporaryDirectory() as path:
     ...     with Lock(path):
-    ...         try:
-    ...             with Lock(path):
-    ...                 pass
-    ...         except LockedError as e:
-    ...             print(e)
-    LockedError: ...
+    ...         with Lock(path):
+    ...             pass
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.LockedError: ...
     >>> with tempfile.TemporaryDirectory() as path:
     ...     with Lock(join(path, 'nope')):
     ...         pass
