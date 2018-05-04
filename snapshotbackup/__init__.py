@@ -154,7 +154,7 @@ def _main(configfile, configsection, action, silent=False):  # noqa: C901
         _exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
 
 
-def _signal_handler(signal):
+def _signal_handler(signal, _):
     """handle registered signals, probably just `SIGTERM`."""
     _exit(f'got signal {signal}')
 
