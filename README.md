@@ -63,7 +63,7 @@ make -f Makefile.demo purge
 make -f Makefile.demo clean
 ```
 
-please read `demo/Makefile` and `demo/config.ini` to understand what's happening.
+please read `Makefile.demo` and `demo/config.ini` to understand what's happening.
 
 
 dev env
@@ -73,9 +73,8 @@ dev env
 virtualenv .env -p python3
 . .env/bin/activate
 pip install -r requirements.txt
+pip install --editable .
 ```
-
-use `./dev.py` instead of `snapshotbackup`.
 
 
 that's all
