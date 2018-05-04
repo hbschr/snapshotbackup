@@ -56,14 +56,14 @@ it creates a `btrfs` image file and mounts it as loopback device.
 **DISCLAIMER**: i'm not sure if btrfs loopback files are safe in every environment. use at your own risk.
 
 ```
-make -C demo setup
-make -C demo backup
-make -C demo list
-make -C demo purge
-make -C demo clean
+make -f Makefile.demo setup
+make -f Makefile.demo backup
+make -f Makefile.demo list
+make -f Makefile.demo purge
+make -f Makefile.demo clean
 ```
 
-please read `demo/Makefile` and `demo/config.ini` to understand what's happening.
+please read `Makefile.demo` and `demo/config.ini` to understand what's happening.
 
 
 dev env
@@ -73,9 +73,8 @@ dev env
 virtualenv .env -p python3
 . .env/bin/activate
 pip install -r requirements.txt
+pip install --editable .
 ```
-
-use `./dev.py` instead of `snapshotbackup`.
 
 
 that's all

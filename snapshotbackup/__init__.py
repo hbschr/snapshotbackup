@@ -1,19 +1,19 @@
 import argparse
+import configparser
 import logging
 import os
+import signal
+import sys
 from os import makedirs
 from os.path import join as path_join
-import signal
-import subprocess
-import sys
-
+from setuptools_scm import get_version
 
 from .backup import load_backups
 from .config import parse_config
-from .lock import Lock, LockedError, LockPathError
+from .exceptions import BackupDirError, CommandNotFoundError, LockedError, LockPathError, SyncFailedError
+from .lock import Lock
 from .shell import create_subvolume, delete_subvolume, make_snapshot, rsync
 from .timestamps import get_timestamp
-
 
 logger = logging.getLogger()
 _sync_dir = '.sync'
@@ -21,17 +21,11 @@ _sync_dir = '.sync'
 
 def make_backup(config, silent=False):
     """make a backup for given configuration."""
+    logger.debug(f'make backup w/ config `{config}`')
     sync_target = f'{config["backups"]}/{_sync_dir}'
     logger.info(f'syncing `{config["source"]}` to `{sync_target}`')
-    try:
-        with Lock(config['backups']):
-            rsync(config['source'], sync_target, exclude=config['ignore'], silent=silent)
-    except subprocess.CalledProcessError as e:
-        logger.error(e)
-        sys.exit(f'backup interrupted or failed, `{sync_target}` may be in an inconsistent state')
-    except LockedError as e:
-        logger.warning(e)
-        sys.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
+    with Lock(config['backups']):
+        rsync(config['source'], sync_target, exclude=config['ignore'], silent=silent)
     timestamp = get_timestamp().isoformat()
     snapshot_target = f'{config["backups"]}/{timestamp}'
     logger.info(f'snapshotting `{sync_target}` to `{snapshot_target}`')
@@ -39,6 +33,7 @@ def make_backup(config, silent=False):
 
 
 def list_backups(config):
+    logger.debug(f'list backups w/ config `{config}`')
     backups = load_backups(config)
     for backup in backups:
         retain_all = backup.is_inside_retain_all_interval
@@ -51,6 +46,7 @@ def list_backups(config):
 
 def purge_backups(config, silent=False):
     """delete all backups for given configuration which are not held by retention policy."""
+    logger.debug(f'purge backups w/ config `{config}`')
     backups = load_backups(config)
     purges = [backup for backup in backups if backup.purge]
     for purge in purges:
@@ -60,6 +56,7 @@ def purge_backups(config, silent=False):
 
 def setup_paths(config, silent=False):
     """setup backup paths for given configuration."""
+    logger.debug(f'setup paths w/ config `{config}`')
     makedirs(config['backups'], exist_ok=True)
     sync_target = f'{config["backups"]}/{_sync_dir}'
     logger.info(f'create subvolume `{sync_target}`')
@@ -73,67 +70,84 @@ def _parse_args():
                              ' or purge backups not held by retention policy')
     parser.add_argument('name',
                         help='section name in config file')
-    parser.add_argument('-c', '--config', type=open, required=True, metavar='filename',
+    parser.add_argument('-c', '--config', type=open, metavar='filename',
                         help='use given config file')
     parser.add_argument('-s', '--silent', action='store_true',
                         help='suppress output on stdout')
-    parser.add_argument('-v', '--verbose', action='count', default=0,
-                        help='increase verbosity, may be used twice')
+    parser.add_argument('-d', '--debug', action='count', default=0,
+                        help='lower logging threshold, may be used twice')
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {get_version()}',
+                        help='print version number and exit')
     return parser.parse_args()
 
 
-def _init_logger(verbosity):
-    if verbosity == 0:
+def _init_logger(log_level=0):
+    """increase log level
+
+    :param log_level int: `0` - warning, `1` - info, `2` - debug
+    :return:
+    """
+    if log_level == 0:
         level = logging.WARNING
-    elif verbosity == 1:
+    elif log_level == 1:
         level = logging.INFO
     else:
         level = logging.DEBUG
     logging.basicConfig(level=level)
 
 
-def _load_config(file, section):
-    logger.debug(f'parse config file `{file}`, section `{section}`')
-    return parse_config(file, section)
+def _exit(error_message=None):
+    if error_message is None:
+        logger.info(f'exit without errors')
+        sys.exit()
+    logger.error(f'exit with error `{error_message}`')
+    sys.exit(error_message)
 
 
-def _signal_handler(signal, frame):
-    sys.exit(f'got signal `{signal}`, exit')
+def _signal_handler(signal):
+    _exit(f'got signal {signal}')
 
 
-def _main_switch(args):  # noqa: C901
-    config = _load_config(args.config, args.name)
+def _main(configfile, configsection, action, silent=False):  # noqa: C901
     try:
-        if args.action in ['s', 'setup']:
-            logger.debug(f'setup paths w/ config `{config}`')
-            setup_paths(config, silent=args.silent)
-        elif args.action in ['b', 'backup']:
-            logger.debug(f'make backup w/ config `{config}`')
-            make_backup(config, silent=args.silent)
-        elif args.action in ['l', 'list']:
-            logger.debug(f'list backups w/ config `{config}`')
-            list_backups(config)
-        elif args.action in ['p', 'purge']:
-            logger.debug(f'purge backups w/ config `{config}`')
-            purge_backups(config, silent=args.silent)
-    except NotADirectoryError as e:
-        logger.error(f'not a directory: `{e}`')
+        config = parse_config(configsection, file=configfile)
     except FileNotFoundError as e:
-        logger.error(f'file `{e.filename}` not found, maybe missing software?')
+        _exit(f'configuration file `{e.filename}` not found')
+    except configparser.NoSectionError as e:
+        _exit(f'no configuration for `{e.section}` found')
+
+    try:
+        if action in ['s', 'setup']:
+            setup_paths(config, silent=silent)
+        elif action in ['b', 'backup']:
+            make_backup(config, silent=silent)
+        elif action in ['l', 'list']:
+            list_backups(config)
+        elif action in ['p', 'purge']:
+            purge_backups(config, silent=silent)
+    except BackupDirError as e:
+        _exit(f'not a directory: `{e.dir}`')
+    except CommandNotFoundError as e:
+        _exit(f'command `{e.command}` not found, mayhap missing software?')
+    except KeyboardInterrupt as e:
+        _exit('keyboard interrupt')
+    except LockedError as e:
+        _exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
     except LockPathError as e:
-        logger.error(e)
+        _exit(e)
+    except SyncFailedError as e:
+        _exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
     else:
-        return True
+        _exit()
 
 
 def main():
     try:
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
-        _init_logger(args.verbose)
-        logger.info(f'snapshotbackup start w/ pid `{os.getpid()}`')
-        success = _main_switch(args)
-        logger.info(f'snapshotbackup finished with `{success}`')
-        sys.exit(not success)  # invert bool for UNIX
-    except KeyboardInterrupt:
-        sys.exit('keyboard interrupt, exit')
+        _init_logger(log_level=args.debug)
+        logger.info(f'start w/ pid `{os.getpid()}`')
+        _main(configfile=args.config, configsection=args.name, action=args.action, silent=args.silent)
+    except Exception as e:
+        logger.exception(e)
+        _exit('uncaught exception')

@@ -1,4 +1,10 @@
+import logging
+import subprocess
 from subprocess import PIPE, run
+
+from .exceptions import CommandNotFoundError, SyncFailedError
+
+logger = logging.getLogger()
 
 
 def _shell(*args, silent=False):
@@ -8,20 +14,22 @@ def _shell(*args, silent=False):
     :type args: tuple of str
     :param silent bool: suppress output on `stdout`
     :raise subprocess.CalledProcessError: if process exits with a non-zero exit code
-    :raise FileNotFoundError: if command cannot be found
+    :raise CommandNotFoundError: if command cannot be found
 
     >>> from snapshotbackup.shell import _shell
     >>> _shell('true')
     >>> _shell('false')
     Traceback (most recent call last):
-      ...
     subprocess.CalledProcessError: ...
-    >>> _shell('not-a-command-whae5roo') != ''
+    >>> _shell('not-a-command-whae5roo')
     Traceback (most recent call last):
-      ...
-    FileNotFoundError: ...
+    snapshotbackup.exceptions.CommandNotFoundError: ...
     """
-    run(args, check=True, stdout=PIPE if silent else None)
+    try:
+        run(args, check=True, stdout=PIPE if silent else None)
+    except FileNotFoundError as e:
+        logger.debug(f'raise `CommandNotFoundError` after catching `{e}`')
+        raise CommandNotFoundError(e.filename)
 
 
 def rsync(source, target, exclude='', silent=False):
@@ -32,7 +40,11 @@ def rsync(source, target, exclude='', silent=False):
     :param exclude str: paths to exclude
     :param silent bool: suppress output on `stdout`
     """
-    _shell('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target, silent=silent)
+    try:
+        _shell('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target, silent=silent)
+    except subprocess.CalledProcessError as e:
+        logger.debug(f'raise `SyncFailedError` after catching `{e}`')
+        raise SyncFailedError(target)
 
 
 def create_subvolume(path, silent=False):

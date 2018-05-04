@@ -16,11 +16,12 @@ clean: clean-doc
 	rm -f .coverage
 
 mrproper: clean
+	find . -type f -name "*.orig"
 	rm -rf .env/
 	rm -rf build/ dist/
 
 lint:
-	flake8 .
+	flake8 snapshotbackup
 
 test:
 	pytest

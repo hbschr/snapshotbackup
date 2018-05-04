@@ -2,6 +2,9 @@
 *~
 /.idea
 
+# git & tools
+*.orig
+
 
 # python
 /.env

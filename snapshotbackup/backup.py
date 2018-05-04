@@ -2,7 +2,7 @@ from datetime import datetime
 from os import walk
 from os.path import isdir
 
-
+from .exceptions import BackupDirError
 from .timestamps import is_same_day, is_same_week, is_timestamp, parse_timestamp
 
 
@@ -11,14 +11,20 @@ def _get_dirs(path):
 
     :param path str:
     :return list: backups available in `path`
-    :raise NotADirectoryError: if `path` is no directory
+    :raise BackupDirError: if `path` is no directory
 
+    >>> import tempfile
+    >>> from os.path import join
     >>> from snapshotbackup.backup import _get_dirs
     >>> _get_dirs('/tmp')
     [...]
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     _get_dirs(join(path, 'nope'))
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.BackupDirError: ...
     """
     if not isdir(path):
-        raise NotADirectoryError(path)
+        raise BackupDirError(path)
     for root, dirs, files in walk(path):
         return [dir for dir in dirs if is_timestamp(dir)]
     return []

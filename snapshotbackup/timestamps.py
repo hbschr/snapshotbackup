@@ -2,14 +2,7 @@ import dateparser
 from datetime import datetime, timedelta, timezone
 from dateutil.parser import isoparse
 
-
-class TimestampParseError(Exception):
-    def __init__(self, message, error=None):
-        super().__init__(message)
-        self.error = error
-
-    def __str__(self):
-        return f'TimestampParseError: {self.error}'
+from .exceptions import TimestampParseError
 
 
 def get_timestamp():
@@ -37,16 +30,14 @@ def parse_timestamp(string):
     >>> parse_timestamp('some random string')
     Traceback (most recent call last):
     ...
-    snapshotbackup.timestamps.TimestampParseError: ...
+    snapshotbackup.exceptions.TimestampParseError: ...
     """
     try:
         return isoparse(string)
-    except ValueError as e:
-        # invalid date
-        raise TimestampParseError(str(e), e) from e
-    except OverflowError as e:                          # pragma: no cover
-        # parsed date exceeds the largest valid C integer
-        raise TimestampParseError(str(e), e) from e     # pragma: no cover
+    except (ValueError, OverflowError) as e:
+        # ValueError: invalid date
+        # OverflowError: parsed date exceeds the largest valid C integer
+        raise TimestampParseError(str(e), error=e)
 
 
 def parse_human_readable_relative_dates(string: str) -> datetime:
@@ -62,7 +53,7 @@ def parse_human_readable_relative_dates(string: str) -> datetime:
     >>> parse_human_readable_relative_dates('anytime')
     Traceback (most recent call last):
     ...
-    snapshotbackup.timestamps.TimestampParseError: ...
+    snapshotbackup.exceptions.TimestampParseError: ...
     """
     date = dateparser.parse(string, settings={'RETURN_AS_TIMEZONE_AWARE': True})
     if date:
