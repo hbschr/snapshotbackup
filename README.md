@@ -77,6 +77,14 @@ pip install --editable .
 ```
 
 
+build
+==
+
+```
+./setup.py bdist_wheel
+```
+
+
 that's all
 ==
 
