@@ -17,6 +17,7 @@ class Error(Exception):
 class BackupDirError(Error):
     """backup directory is no directory. run setup.
 
+    >>> from snapshotbackup.exceptions import BackupDirError
     >>> raise BackupDirError('/test')
     Traceback (most recent call last):
     snapshotbackup.exceptions.BackupDirError: ...
