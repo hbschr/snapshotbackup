@@ -25,7 +25,7 @@ class BackupDirError(Error):
     dir: str
 
     def __init__(self, dir):
-        super().__init__(f'BackupDirError: `{dir}`')
+        super().__init__(f'BackupDirError: {dir}')
         self.dir = dir
 
 
@@ -34,7 +34,7 @@ class CommandNotFoundError(Error):
     command: str
 
     def __init__(self, command):
-        super().__init__(f'Command not found: `{command}`')
+        super().__init__(f'Command not found: {command}')
         self.command = command
 
 
