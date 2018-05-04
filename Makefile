@@ -1,4 +1,4 @@
-doc: doctest apidoc
+doc: apidoc doctest
 	sphinx-build -b html doc doc/build
 
 doctest:
