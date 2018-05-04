@@ -3,10 +3,17 @@ python: '3.6'
 sudo: required
 install: pip install -r requirements.txt
 jobs:
-    include:
-        - stage: Run unit tests
-          script: make check
-        - stage: Run demo
-          script: make -f Makefile.demo test
-        - stage: Run tox
-          script: tox
+  include:
+  - stage: Run unit tests
+    script: make check
+  - stage: Run demo
+    script: make -f Makefile.demo test
+  - stage: Run tox
+    script: tox
+deploy:
+  provider: pypi
+  user: hbschr
+  password:
+    secure: jCzlqMRhrkvK8WpcgmJipbx6wu+hwfw93rMXBPVAQyA4alWmAdkakDadfLbek3+wg1KWhGEnLoJZ4TsxKpsPDtdsvlaDUVxJWK1vVksgLwX1GdCypYwMaiX1JZ7eLfP5F8VjPEV3gu4MqB0775zl+urtZK3OIXJ/TL0cnMww4v28p81zINT9Z+lbgfXSJ/U1Kc0UqQA4611SEmmjH81MFEzbCp8Nt0Iqqbeea4SrC3Z5fPeYMJXCVE3OxM21+ZH8MtNxrx8VpJi4g1UJWUe0rPCy4rtM42EsEhMWEpkRba11tW159Jb9W8hLyWg1MDd330S50Exkkws0TAu04h6DNYYI8gmSkXTp6w43uOBH0LfKDVcMvnVMoT0SbqtUiRaXYCxZXeMbk1VV3GgIjeLXRPcnxARj3iAjpyf9CYFzYa2M8qH4npyvHiIqqr50s2oOWAZjiHci6hP6PfnXvsRVY5K8q1nnInZMhwpR/rZZEYMTr3TDMu7eC2lhyIrv/bpYi7BvvZpB4uqYFm6kg0paodcezJ5AYAvRO7FegHO3uaPKBnQQGj9RlXZ0NBAOxavzVN6PASABYXp4n2Wqo5tVP322xVBNpKsbcOOcxiREZopehNI/AIiKtbbgp7GBwO31tetFFF5SBq+f4Rmviaq3GxT3oh/DmTtKx/Ckgc1IiOE=
+  on:
+    tags: true
