@@ -42,12 +42,9 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.todo',
-    'sphinx.ext.coverage',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
 ]
-
-# include private menbers in autodoc.
-autodoc_default_flags = ['private-members']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -165,7 +162,18 @@ texinfo_documents = [
 
 # -- Extension configuration -------------------------------------------------
 
-# -- Options for todo extension ----------------------------------------------
+# Options for todo extension
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+
+# Options for intersphinx extension
+
+intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
+
+
+# Options for autodoc extension
+
+# include private menbers in autodoc.
+autodoc_default_flags = ['private-members']
