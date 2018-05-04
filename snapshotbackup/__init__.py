@@ -33,6 +33,7 @@ def make_backup(config, silent=False):
 
 
 def list_backups(config):
+    """list all backups for given configuration."""
     logger.debug(f'list backups w/ config `{config}`')
     backups = load_backups(config)
     for backup in backups:
@@ -64,6 +65,10 @@ def setup_paths(config, silent=False):
 
 
 def _parse_args():
+    """argument definitions. return parsed args.
+
+    :return: :class:`argparse.Namespace`
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
                         help='setup backup paths, make backup, list backups'
@@ -82,10 +87,10 @@ def _parse_args():
 
 
 def _init_logger(log_level=0):
-    """increase log level
+    """increase log level.
 
     :param log_level int: `0` - warning, `1` - info, `2` - debug
-    :return:
+    :return None:
     """
     if log_level == 0:
         level = logging.WARNING
@@ -97,18 +102,30 @@ def _init_logger(log_level=0):
 
 
 def _exit(error_message=None):
+    """log and exit.
+
+    :param str error_message: will be logged. changes exit status to `1`.
+    :exit 0: success
+    :exit 1: error
+    """
     if error_message is None:
         logger.info(f'exit without errors')
         sys.exit()
     logger.error(f'exit with error `{error_message}`')
-    sys.exit(error_message)
-
-
-def _signal_handler(signal):
-    _exit(f'got signal {signal}')
+    sys.exit(1)
 
 
 def _main(configfile, configsection, action, silent=False):  # noqa: C901
+    """perform given action on given config/configsection.
+    expected errors are logged.
+
+    :param configfile:
+    :param configsection:
+    :param action:
+    :param silent:
+    :exit 1: in case of error
+    :return None:
+    """
     try:
         config = parse_config(configsection, file=configfile)
     except FileNotFoundError as e:
@@ -129,25 +146,41 @@ def _main(configfile, configsection, action, silent=False):  # noqa: C901
         _exit(f'not a directory: `{e.dir}`')
     except CommandNotFoundError as e:
         _exit(f'command `{e.command}` not found, mayhap missing software?')
-    except KeyboardInterrupt as e:
-        _exit('keyboard interrupt')
     except LockedError as e:
         _exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
     except LockPathError as e:
         _exit(e)
     except SyncFailedError as e:
         _exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
-    else:
-        _exit()
+
+
+def _signal_handler(signal):
+    """handle registered signals, probably just `SIGTERM`."""
+    _exit(f'got signal {signal}')
 
 
 def main():
+    """command line entry point.
+
+    - parse arguments
+    - init logger
+    - call `_main`
+    - handle `SIGTERM` and `KeyboardInterrupt`
+    - log unhandled exceptions
+
+    :exit 0: success
+    :exit 1: interruption
+    :exit 2: argument error
+    """
     try:
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
         _init_logger(log_level=args.debug)
         logger.info(f'start w/ pid `{os.getpid()}`')
         _main(configfile=args.config, configsection=args.name, action=args.action, silent=args.silent)
+    except KeyboardInterrupt:
+        _exit('keyboard interrupt')
     except Exception as e:
         logger.exception(e)
         _exit('uncaught exception')
+    _exit()
