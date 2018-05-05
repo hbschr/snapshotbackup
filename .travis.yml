@@ -1,7 +1,9 @@
 language: python
 python: '3.6'
 sudo: required
-install: pip install -r requirements.txt
+install:
+  - pip install -r requirements.txt
+  - pip install .
 script:
   - make check
   - make doc

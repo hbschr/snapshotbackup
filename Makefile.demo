@@ -1,7 +1,7 @@
 isofile := demo/btrfs.img
 isosize := 500M
 mnt_dir := demo/backups
-script  := ./dev.py
+script  := snapshotbackup
 config  := demo/config.ini
 opts    :=
 
@@ -11,7 +11,7 @@ help:
 	@echo 'no user-friendly help here, please consult `demo/Makefile` and `demo/config.ini` and have fun!'
 
 setup:
-	mkdir $(mnt_dir)
+	mkdir -p $(mnt_dir)
 	fallocate -l $(isosize) $(isofile)
 	mkfs.btrfs $(isofile)
 	sudo mount -o loop $(isofile) $(mnt_dir)
@@ -33,4 +33,7 @@ clean:
 	rmdir $(mnt_dir)
 	rm $(isofile)
 
-test: setup backup list purge clean
+version:
+	snapshotbackup -v
+
+test: version setup backup list purge clean
