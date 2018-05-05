@@ -6,14 +6,19 @@ import signal
 import sys
 from os import makedirs
 from os.path import join as path_join
-from setuptools_scm import get_version
-
+from pkg_resources import get_distribution
+from setuptools_scm import get_version as get_scm_version
 from .backup import load_backups
 from .config import parse_config
 from .exceptions import BackupDirError, CommandNotFoundError, LockedError, LockPathError, SyncFailedError
 from .lock import Lock
 from .shell import create_subvolume, delete_subvolume, make_snapshot, rsync
 from .timestamps import get_timestamp
+
+try:
+    __version__ = get_scm_version()
+except LookupError as e:
+    __version__ = get_distribution(__name__).version
 
 logger = logging.getLogger()
 _sync_dir = '.sync'
@@ -81,7 +86,7 @@ def _parse_args():
                         help='suppress output on stdout')
     parser.add_argument('-d', '--debug', action='count', default=0,
                         help='lower logging threshold, may be used twice')
-    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {get_version()}',
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
                         help='print version number and exit')
     return parser.parse_args()
 
