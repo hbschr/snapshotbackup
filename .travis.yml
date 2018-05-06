@@ -1,15 +1,14 @@
 language: python
 python: '3.6'
 sudo: required
-install: pip install -r requirements.txt
-jobs:
-  include:
-  - stage: Run unit tests
-    script: make check
-  - stage: Run demo
-    script: make -f Makefile.demo test
-  - stage: Run tox
-    script: tox
+install:
+  - pip install -r requirements.txt
+  - pip install .
+script:
+  - make check
+  - make doc
+  - make -f Makefile.demo test
+  - tox
 deploy:
   provider: pypi
   user: hbschr

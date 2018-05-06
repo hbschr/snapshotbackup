@@ -17,7 +17,6 @@ setup(
     description='backups with `rsync` and `btrfs`',
     license='MIT',
     long_description=long_description,
-    long_description_content_type='text/markdown',
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
     packages=('snapshotbackup',),

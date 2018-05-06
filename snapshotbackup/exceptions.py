@@ -17,6 +17,7 @@ class Error(Exception):
 class BackupDirError(Error):
     """backup directory is no directory. run setup.
 
+    >>> from snapshotbackup.exceptions import BackupDirError
     >>> raise BackupDirError('/test')
     Traceback (most recent call last):
     snapshotbackup.exceptions.BackupDirError: ...
@@ -24,7 +25,7 @@ class BackupDirError(Error):
     dir: str
 
     def __init__(self, dir):
-        super().__init__(f'BackupDirError: `{dir}`')
+        super().__init__(f'BackupDirError: {dir}')
         self.dir = dir
 
 
@@ -33,7 +34,7 @@ class CommandNotFoundError(Error):
     command: str
 
     def __init__(self, command):
-        super().__init__(f'Command not found: `{command}`')
+        super().__init__(f'Command not found: {command}')
         self.command = command
 
 
