@@ -26,7 +26,7 @@ def _shell(*args, silent=False):
     snapshotbackup.exceptions.CommandNotFoundError: ...
     """
     try:
-        run(args, check=True, stdout=PIPE if silent else None)
+        run(args, check=True, stdout=PIPE if silent else None, stderr=PIPE if silent else None)
     except FileNotFoundError as e:
         logger.debug(f'raise `CommandNotFoundError` after catching `{e}`')
         raise CommandNotFoundError(e.filename)
@@ -40,6 +40,7 @@ def rsync(source, target, exclude='', silent=False):
     :param str exclude: paths to exclude
     :param bool silent: suppress output on `stdout`
     """
+    logger.info(f'sync `{source}` to `{target}`')
     try:
         _shell('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target, silent=silent)
     except subprocess.CalledProcessError as e:
@@ -53,6 +54,7 @@ def create_subvolume(path, silent=False):
     :param str path: filesystem path
     :param bool silent: suppress output on `stdout`
     """
+    logger.info(f'create subvolume `{path}`')
     _shell('btrfs', 'subvolume', 'create', path, silent=silent)
 
 
@@ -62,6 +64,7 @@ def delete_subvolume(path, silent=False):
     :param str path: filesystem path
     :param bool silent: suppress output on `stdout`
     """
+    logger.info(f'delete subvolume `{path}`')
     _shell('sudo', 'btrfs', 'subvolume', 'delete', path, silent=silent)
 
 
@@ -72,4 +75,17 @@ def make_snapshot(source, target, silent=False):
     :param str target: filesystem path
     :param bool silent: suppress output on `stdout`
     """
+    logger.info(f'snapshot subvolume `{source}` as `{target}`')
     _shell('btrfs', 'subvolume', 'snapshot', '-r', source, target, silent=silent)
+
+
+def is_btrfs(path):
+    try:
+        _shell('btrfs', 'filesystem', 'df', path, silent=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def btrfs_sync(path, silent=False):
+    _shell('btrfs', 'filesystem', 'sync', path, silent=silent)

@@ -1,52 +1,6 @@
 from datetime import datetime
-from os import walk
-from os.path import isdir
 
-from .exceptions import BackupDirError
-from .timestamps import is_same_day, is_same_week, is_timestamp, parse_timestamp
-
-
-def _get_dirs(path):
-    """get list of directories in `path` which can be parsed as timestamps.
-
-    :param str path:
-    :return list: backups available in `path`
-    :raise BackupDirError: if `path` is no directory
-
-    >>> import tempfile
-    >>> from os.path import join
-    >>> from snapshotbackup.backup import _get_dirs
-    >>> _get_dirs('/tmp')
-    [...]
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     _get_dirs(join(path, 'nope'))
-    Traceback (most recent call last):
-    snapshotbackup.exceptions.BackupDirError: ...
-    """
-    if not isdir(path):
-        raise BackupDirError(f'not a directory {path}', path)
-    for root, dirs, files in walk(path):
-        return [dir for dir in dirs if is_timestamp(dir)]
-    return []
-
-
-def load_backups(config):
-    """get list of backups for given `config`
-
-    :param dict config:
-    :return list: list of `Backup`
-    """
-    path = config['backups']
-    retain_all_after = config['retain_all_after']
-    retain_daily_after = config['retain_daily_after']
-    dirs = _get_dirs(path)
-    backups = []
-    for dir in reversed(dirs):
-        if len(backups) == 0:
-            backups.insert(0, Backup(dir, path, retain_all_after, retain_daily_after))
-        else:
-            backups.insert(0, Backup(dir, path, retain_all_after, retain_daily_after, next=backups[0]))
-    return backups
+from .timestamps import is_same_day, is_same_week, parse_timestamp
 
 
 class Backup(object):
@@ -118,6 +72,7 @@ class Backup(object):
         :param datetime.datetime retain_all: backup will not be purged if it is after this timestamp
         :param datetime.datetime retain_daily: backup will not be purged if it is after this timestamp and a daily
         :param Backup next: successive backup object
+        :raise TimestampParseError: when `name` is not valid iso string
         """
         self.name = name
         self.path = path
