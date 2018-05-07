@@ -170,10 +170,21 @@ todo_include_todos = True
 
 # Options for intersphinx extension
 
-intersphinx_mapping = {'python': ('https://docs.python.org/3', None)}
-
+intersphinx_mapping = {
+    'snapshotbackup': ('build', None),
+    'python': ('https://docs.python.org/3', None)
+}
 
 # Options for autodoc extension
 
 # include private menbers in autodoc.
 autodoc_default_flags = ['private-members']
+
+# include `__init__` in doc
+def skip(app, what, name, obj, skip, options):
+    if name == "__init__":
+        return False
+    return skip
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip)
