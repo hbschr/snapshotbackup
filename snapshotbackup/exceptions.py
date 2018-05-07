@@ -18,14 +18,14 @@ class BackupDirError(Error):
     """backup directory is no directory. run setup.
 
     >>> from snapshotbackup.exceptions import BackupDirError
-    >>> raise BackupDirError('/test')
+    >>> raise BackupDirError('something wrong with /test', '/test')
     Traceback (most recent call last):
     snapshotbackup.exceptions.BackupDirError: ...
     """
     dir: str
 
-    def __init__(self, dir):
-        super().__init__(f'BackupDirError: {dir}')
+    def __init__(self, message, dir):
+        super().__init__(message)
         self.dir = dir
 
 
@@ -60,8 +60,8 @@ class TimestampParseError(Error):
     def __init__(self, message, error=None):
         """wrapper for several timestamp parsing related errors.
 
-        :param message str: string representation of this error
-        :param error Exception: error thrown from imported timestamp parser
+        :param str message: string representation of this error
+        :param Exception error: error thrown from imported timestamp parser
         """
         super().__init__(message)
         self.error = error

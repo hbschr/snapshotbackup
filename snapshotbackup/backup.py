@@ -9,7 +9,7 @@ from .timestamps import is_same_day, is_same_week, is_timestamp, parse_timestamp
 def _get_dirs(path):
     """get list of directories in `path` which can be parsed as timestamps.
 
-    :param path str:
+    :param str path:
     :return list: backups available in `path`
     :raise BackupDirError: if `path` is no directory
 
@@ -24,7 +24,7 @@ def _get_dirs(path):
     snapshotbackup.exceptions.BackupDirError: ...
     """
     if not isdir(path):
-        raise BackupDirError(path)
+        raise BackupDirError(f'not a directory {path}', path)
     for root, dirs, files in walk(path):
         return [dir for dir in dirs if is_timestamp(dir)]
     return []
@@ -33,7 +33,7 @@ def _get_dirs(path):
 def load_backups(config):
     """get list of backups for given `config`
 
-    :param config dict:
+    :param dict config:
     :return list: list of `Backup`
     """
     path = config['backups']
@@ -113,11 +113,11 @@ class Backup(object):
     def __init__(self, name: str, path: str, retain_all_after: datetime, retain_daily_after: datetime, next=None):
         """initialize a backup object.
 
-        :param name str: name of this backup, also a iso timestamp
-        :param path str: path where this backup resides
-        :param retain_all datetime: backup will not be purged if it is after this timestamp
-        :param retain_daily datetime: backup will not be purged if it is after this timestamp and a daily
-        :param next Backup: successive backup object
+        :param str name: name of this backup, also a iso timestamp
+        :param str path: path where this backup resides
+        :param datetime.datetime retain_all: backup will not be purged if it is after this timestamp
+        :param datetime.datetime retain_daily: backup will not be purged if it is after this timestamp and a daily
+        :param Backup next: successive backup object
         """
         self.name = name
         self.path = path
@@ -134,7 +134,7 @@ class Backup(object):
     def _is_after(self, timestamp):
         """check if given timestamp if after the completion time of this backup.
 
-        :param timestamp datetime:
+        :param datetime.datetime timestamp:
         :return bool:
         """
         return self.datetime > timestamp

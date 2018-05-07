@@ -14,7 +14,7 @@ class Lock(object):
 
     >>> import tempfile
     >>> from os.path import join
-    >>> from snapshotbackup import Lock, LockedError
+    >>> from snapshotbackup.lock import Lock
     >>> with tempfile.TemporaryDirectory() as path:
     ...     with Lock(path):
     ...         pass
@@ -37,7 +37,7 @@ class Lock(object):
     def __init__(self, path):
         """initialize lock
 
-        :param path str: path where lockfile shall be created
+        :param str path: path where lockfile shall be created
         """
         self._lockfile = join(path, _lockfilename)
 
