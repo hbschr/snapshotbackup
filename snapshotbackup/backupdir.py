@@ -45,7 +45,6 @@ class BackupDir(object):
         :param bool assert_syncdir: if true syncdir will be checked and created if needed, also checks `writable`
         :param bool assert_writable bool: if true write access for current process will be checked
         :raise BackupDirError: error with meaningful message
-        :return None:
         """
         self.dir = abspath(dir)
         self.sync_dir = join(self.dir, _sync_dir)

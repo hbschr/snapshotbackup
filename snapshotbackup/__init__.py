@@ -26,7 +26,7 @@ logger = logging.getLogger()
 def make_backup(config, silent=False):
     """make a backup for given configuration.
 
-    :return None:
+    :return: None
     """
     logger.debug(f'make backup w/ config `{config}`')
     vol = BackupDir(config['backups'], assert_syncdir=True)
@@ -38,7 +38,7 @@ def make_backup(config, silent=False):
 def list_backups(config):
     """list all backups for given configuration.
 
-    :return None:
+    :return: None
     """
     logger.debug(f'list backups w/ config `{config}`')
     vol = BackupDir(config['backups'])
@@ -54,7 +54,7 @@ def list_backups(config):
 def purge_backups(config, silent=False):
     """delete all backups for given configuration which are not held by retention policy.
 
-    :return None:
+    :return: None
     """
     logger.debug(f'purge backups w/ config `{config}`')
     vol = BackupDir(config['backups'])
@@ -67,7 +67,7 @@ def purge_backups(config, silent=False):
 def setup_path(config, silent=False):
     """setup backup path for given configuration.
 
-    :return None:
+    :return: None
     """
     logger.debug(f'setup paths w/ config `{config}`')
     makedirs(config['backups'], exist_ok=True)
@@ -99,7 +99,7 @@ def _init_logger(log_level=0):
     """increase log level.
 
     :param int log_level: `0` - warning, `1` - info, `2` - debug
-    :return None:
+    :return: None
     """
     if log_level == 0:
         level = logging.WARNING
@@ -133,7 +133,7 @@ def _main(configfile, configsection, action, silent=False):  # noqa: C901
     :param action:
     :param silent:
     :exit 1: in case of error
-    :return None:
+    :return: None
     """
     try:
         config = parse_config(configsection, file=configfile)
