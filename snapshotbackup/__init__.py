@@ -10,7 +10,8 @@ from pkg_resources import get_distribution
 from setuptools_scm import get_version as get_scm_version
 from .backup import load_backups
 from .config import parse_config
-from .exceptions import BackupDirError, CommandNotFoundError, LockedError, LockPathError, SyncFailedError
+from .exceptions import BackupDirError, CommandNotFoundError, LockedError, LockPathError, SyncFailedError, \
+    TimestampParseError
 from .lock import Lock
 from .shell import create_subvolume, delete_subvolume, make_snapshot, rsync
 from .timestamps import get_timestamp
@@ -116,7 +117,7 @@ def _exit(error_message=None):
     if error_message is None:
         logger.info(f'exit without errors')
         sys.exit()
-    logger.error(f'exit with error `{error_message}`')
+    logger.error(f'exit with error: {error_message}')
     sys.exit(1)
 
 
@@ -137,6 +138,8 @@ def _main(configfile, configsection, action, silent=False):  # noqa: C901
         _exit(f'configuration file `{e.filename}` not found')
     except configparser.NoSectionError as e:
         _exit(f'no configuration for `{e.section}` found')
+    except TimestampParseError as e:
+        _exit(e)
 
     try:
         if action in ['s', 'setup']:
