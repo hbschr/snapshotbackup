@@ -21,10 +21,17 @@ def _shell(*args, show_output=False):
 
     >>> from snapshotbackup.shell import _shell
     >>> _shell('true')
+    >>> _shell('true', show_output=True)
     >>> _shell('false')
     Traceback (most recent call last):
     subprocess.CalledProcessError: ...
+    >>> _shell('false', show_output=True)
+    Traceback (most recent call last):
+    subprocess.CalledProcessError: ...
     >>> _shell('not-a-command-whae5roo')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.CommandNotFoundError: ...
+    >>> _shell('not-a-command-whae5roo', show_output=True)
     Traceback (most recent call last):
     snapshotbackup.exceptions.CommandNotFoundError: ...
     """
