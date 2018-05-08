@@ -31,7 +31,7 @@ def make_backup(config, progress):
     vol = BackupDir(config['backups'], assert_syncdir=True)
     with vol.lock():
         rsync(config['source'], vol.sync_path, exclude=config['ignore'], progress=progress)
-    vol.snapshot_sync()
+        vol.snapshot_sync()
 
 
 def list_backups(config):
