@@ -77,8 +77,8 @@ class Backup(object):
         self.name = name
         self.path = path
         self.datetime = parse_timestamp(name)
-        self.is_inside_retain_all_interval = self._is_after(retain_all_after)
-        self.is_inside_retain_daily_interval = self._is_after(retain_daily_after)
+        self.is_inside_retain_all_interval = self._is_after_or_equal(retain_all_after)
+        self.is_inside_retain_daily_interval = self._is_after_or_equal(retain_daily_after)
         if not next:
             self.is_last = True
         else:
@@ -86,13 +86,13 @@ class Backup(object):
             self.is_weekly = not is_same_week(self.datetime, next.datetime)
             self.purge = not self._retain()
 
-    def _is_after(self, timestamp):
-        """check if given timestamp if after the completion time of this backup.
+    def _is_after_or_equal(self, timestamp):
+        """check if this backup completed after given timestamp.
 
         :param datetime.datetime timestamp:
         :return bool:
         """
-        return self.datetime > timestamp
+        return timestamp <= self.datetime
 
     def _retain(self):
         """check if this backup should be retained by retention policy.
