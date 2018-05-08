@@ -1,6 +1,5 @@
-import logging
 import os
-from os.path import abspath, dirname, isdir, join
+from os.path import abspath, isdir, join
 
 from .backup import Backup
 from .exceptions import BackupDirError, LockedError, LockPathError
@@ -27,13 +26,13 @@ class BackupDir(object):
     snapshotbackup.exceptions.BackupDirError: ...
     """
 
-    dir: str
+    path: str
     """absolute path to backup dir"""
 
-    sync_dir: str
+    sync_path: str
     """absolute path to sync dir"""
 
-    def __init__(self, dir, assert_syncdir=False, assert_writable=False):
+    def __init__(self, dir, assert_syncdir=False, assert_writable=False, silent=False):
         """check that `path`
 
         - exists
@@ -47,39 +46,40 @@ class BackupDir(object):
         :param bool assert_writable bool: if true write access for current process will be checked
         :raise BackupDirError: error with meaningful message
         """
-        self.dir = abspath(dir)
-        self.sync_dir = join(self.dir, _sync_dir)
+        self.path = abspath(dir)
+        self.sync_path = join(self.path, _sync_dir)
+        self._silent = silent
 
-        if not isdir(self.dir):
-            raise BackupDirError(f'not a directory {self.dir}', self.dir)
+        if not isdir(self.path):
+            raise BackupDirError(f'not a directory {self.path}', self.path)
 
-        if (assert_writable or assert_syncdir) and not os.access(self.dir, os.W_OK):
-            raise BackupDirError(f'not writable {self.dir}', self.dir)
+        if (assert_writable or assert_syncdir) and not os.access(self.path, os.W_OK):
+            raise BackupDirError(f'not writable {self.path}', self.path)
 
-        if not is_btrfs(self.dir):
-            raise BackupDirError(f'not a btrfs {self.dir}', self.dir)
+        if not is_btrfs(self.path):
+            raise BackupDirError(f'not a btrfs {self.path}', self.path)
 
-        if assert_syncdir and not isdir(self.sync_dir):
+        if assert_syncdir and not isdir(self.sync_path):
             try:
                 _last = self.get_backups().pop()
-                make_snapshot(join(_last.path, _last.name), self.sync_dir, readonly=False, silent=False)
+                make_snapshot(_last.path, self.sync_path, readonly=False, silent=self._silent)
             except IndexError:
-                create_subvolume(self.sync_dir, silent=True)
+                create_subvolume(self.sync_path, silent=True)
 
     def lock(self):
         """lock sync dir.
 
         :return object: a :class:`snapshotbackup.lock.Lock` context
         """
-        return Lock(self.dir)
+        return Lock(self.path)
 
-    def new_snapshot_path(self):
-        """create snapshot path with current timestamp.
+    def snapshot_sync(self):
+        """make a snapshot of sync dir.
 
-        :return str:
+        :return: None
         """
-        timestamp = get_timestamp().isoformat()
-        return join(self.dir, timestamp)
+        target_path = join(self.path, get_timestamp().isoformat())
+        make_snapshot(self.sync_path, target_path, silent=self._silent)
 
     def get_backups(self, retain_all_after=earliest_time, retain_daily_after=earliest_time):
         """create list of all backups in this backup dir.
@@ -89,16 +89,17 @@ class BackupDir(object):
         :return: list of backups in this backup directory
         :rtype: [snapshotbackup.backup.Backup]
         """
-        for root, dirs, files in os.walk(self.dir):
+        for root, dirs, files in os.walk(self.path):
             dirs = [dir for dir in dirs if is_timestamp(dir)]
             break
 
         backups = []
-        for dir in reversed(dirs):
+        for backup in reversed(dirs):
             if len(backups) == 0:
-                backups.insert(0, Backup(dir, self.dir, retain_all_after, retain_daily_after))
+                backups.insert(0, Backup(backup, self, retain_all_after, retain_daily_after))
             else:
-                backups.insert(0, Backup(dir, self.dir, retain_all_after, retain_daily_after, next=backups[0]))
+                backups.insert(0, Backup(backup, self, retain_all_after, retain_daily_after, next=backups[
+                    0]))
         return backups
 
 
@@ -126,16 +127,19 @@ class Lock(object):
     Traceback (most recent call last):
     snapshotbackup.exceptions.LockPathError: ...
     """
+    _dir: str
+    """full path to directory"""
 
     _lockfile: str
     """full path to the lockfile"""
 
-    def __init__(self, path):
+    def __init__(self, dir):
         """initialize lock
 
-        :param str path: path where lockfile shall be created
+        :param str dir: path where lockfile shall be created
         """
-        self._lockfile = join(path, _sync_lockfile)
+        self._dir = abspath(dir)
+        self._lockfile = join(self._dir, _sync_lockfile)
 
     def __enter__(self):
         """enter locked context
@@ -153,7 +157,7 @@ class Lock(object):
         try:
             open(self._lockfile, 'w').close()
         except FileNotFoundError as e:
-            raise LockPathError(dirname(self._lockfile))
+            raise LockPathError(self._dir)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         """exit locked context, lockfile will be removed"""

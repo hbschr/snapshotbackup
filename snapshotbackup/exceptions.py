@@ -10,18 +10,18 @@ class Error(Exception):
 
 
 class BackupDirError(Error):
-    """backup directory is no directory. run setup.
+    """backup directory related error with meaningful message.
 
     >>> from snapshotbackup.exceptions import BackupDirError
     >>> raise BackupDirError('something wrong with /test', '/test')
     Traceback (most recent call last):
     snapshotbackup.exceptions.BackupDirError: ...
     """
-    dir: str
+    path: str
 
-    def __init__(self, message, dir):
+    def __init__(self, message, path):
         super().__init__(message)
-        self.dir = dir
+        self.path = path
 
 
 class CommandNotFoundError(Error):

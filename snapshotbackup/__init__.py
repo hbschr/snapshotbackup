@@ -5,7 +5,6 @@ import os
 import signal
 import sys
 from os import makedirs
-from os.path import join as path_join
 from pkg_resources import get_distribution
 from setuptools_scm import get_version as get_scm_version
 
@@ -13,7 +12,7 @@ from .backupdir import BackupDir
 from .config import parse_config
 from .exceptions import BackupDirError, CommandNotFoundError, LockedError, LockPathError, SyncFailedError, \
     TimestampParseError
-from .shell import delete_subvolume, make_snapshot, rsync
+from .shell import delete_subvolume, rsync
 
 try:
     __version__ = get_scm_version()
@@ -29,10 +28,10 @@ def make_backup(config, silent=False):
     :return: None
     """
     logger.debug(f'make backup w/ config `{config}`')
-    vol = BackupDir(config['backups'], assert_syncdir=True)
+    vol = BackupDir(config['backups'], assert_syncdir=True, silent=silent)
     with vol.lock():
-        rsync(config['source'], vol.sync_dir, exclude=config['ignore'], silent=silent)
-    make_snapshot(vol.sync_dir, vol.new_snapshot_path(), silent=silent)
+        rsync(config['source'], vol.sync_path, exclude=config['ignore'], silent=silent)
+    vol.snapshot_sync()
 
 
 def list_backups(config):
@@ -58,10 +57,10 @@ def purge_backups(config, silent=False):
     """
     logger.debug(f'purge backups w/ config `{config}`')
     vol = BackupDir(config['backups'])
-    backups = vol.get_backups(config['retain_all_after'], config['retain_daily_after'])
-    purges = [backup for backup in backups if backup.purge]
-    for purge in purges:
-        delete_subvolume(path_join(purge.path, purge.name), silent=silent)
+    backups = vol.get_backups(retain_all_after=config['retain_all_after'],
+                              retain_daily_after=config['retain_daily_after'])
+    for purge in [_b for _b in backups if _b.purge]:
+        delete_subvolume(purge.path, silent=silent)
 
 
 def setup_path(config, silent=False):

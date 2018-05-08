@@ -1,20 +1,23 @@
 from datetime import datetime
 
+from os.path import join
+
 from .timestamps import is_same_day, is_same_week, parse_timestamp
 
 
 class Backup(object):
     """Used as a container for all metadata attached to a finished backup.
 
-    >>> from snapshotbackup.backup import Backup
     >>> from datetime import datetime
+    >>> from snapshotbackup.backup import Backup
+    >>> mock_vol = type('BackupDir', (object,), {'path': '/tmp'})
     >>> retain_all = datetime(1970, 3, 1)
     >>> retain_daily = datetime(1970, 2, 1)
-    >>> b4 = Backup('1970-04-02', '/tmp', retain_all, retain_daily)
-    >>> b3 = Backup('1970-03-02', '/tmp', retain_all, retain_daily, next=b4)
-    >>> b2 = Backup('1970-02-02', '/tmp', retain_all, retain_daily, next=b3)
-    >>> b1 = Backup('1970-01-02', '/tmp', retain_all, retain_daily, next=b2)
-    >>> b0 = Backup('1970-01-01', '/tmp', retain_all, retain_daily, next=b1)
+    >>> b4 = Backup('1970-04-02', mock_vol, retain_all, retain_daily)
+    >>> b3 = Backup('1970-03-02', mock_vol, retain_all, retain_daily, next=b4)
+    >>> b2 = Backup('1970-02-02', mock_vol, retain_all, retain_daily, next=b3)
+    >>> b1 = Backup('1970-01-02', mock_vol, retain_all, retain_daily, next=b2)
+    >>> b0 = Backup('1970-01-01', mock_vol, retain_all, retain_daily, next=b1)
     >>> b0.purge
     True
     >>> b0.is_weekly
@@ -40,8 +43,11 @@ class Backup(object):
     name: str
     """name, coincidently also the iso timestamp string"""
 
+    vol = None
+    """backup dir where this backup resides in"""
+
     path: str
-    """basepath this backup resides in"""
+    """full path to this backup"""
 
     datetime: datetime
     """when this backup was finished"""
@@ -64,19 +70,20 @@ class Backup(object):
     purge: bool = False
     """if this backup should be purged by retention policy"""
 
-    def __init__(self, name: str, path: str, retain_all_after: datetime, retain_daily_after: datetime, next=None):
+    def __init__(self, name, vol, retain_all_after, retain_daily_after, next=None):
         """initialize a backup object.
 
         :param str name: name of this backup, also a iso timestamp
-        :param str path: path where this backup resides
+        :param BackupDir vol: backup directory this backup lives in
         :param datetime.datetime retain_all: backup will not be purged if it is after this timestamp
         :param datetime.datetime retain_daily: backup will not be purged if it is after this timestamp and a daily
         :param Backup next: successive backup object
         :raise TimestampParseError: when `name` is not valid iso string
         """
         self.name = name
-        self.path = path
         self.datetime = parse_timestamp(name)
+        self.vol = vol
+        self.path = join(self.vol.path, self.name)
         self.is_inside_retain_all_interval = self._is_after_or_equal(retain_all_after)
         self.is_inside_retain_daily_interval = self._is_after_or_equal(retain_daily_after)
         if not next:
