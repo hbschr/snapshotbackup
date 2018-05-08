@@ -32,7 +32,7 @@ class BackupDir(object):
     sync_path: str
     """absolute path to sync dir"""
 
-    def __init__(self, dir, assert_syncdir=False, assert_writable=False, silent=False):
+    def __init__(self, dir, assert_syncdir=False, assert_writable=False):
         """check that `path`
 
         - exists
@@ -48,7 +48,6 @@ class BackupDir(object):
         """
         self.path = abspath(dir)
         self.sync_path = join(self.path, _sync_dir)
-        self._silent = silent
 
         if not isdir(self.path):
             raise BackupDirError(f'not a directory {self.path}', self.path)
@@ -62,9 +61,9 @@ class BackupDir(object):
         if assert_syncdir and not isdir(self.sync_path):
             try:
                 _last = self.get_backups().pop()
-                make_snapshot(_last.path, self.sync_path, readonly=False, silent=self._silent)
+                make_snapshot(_last.path, self.sync_path, readonly=False)
             except IndexError:
-                create_subvolume(self.sync_path, silent=True)
+                create_subvolume(self.sync_path)
 
     def lock(self):
         """lock sync dir.
@@ -79,7 +78,7 @@ class BackupDir(object):
         :return: None
         """
         target_path = join(self.path, get_timestamp().isoformat())
-        make_snapshot(self.sync_path, target_path, silent=self._silent)
+        make_snapshot(self.sync_path, target_path)
 
     def get_backups(self, retain_all_after=earliest_time, retain_daily_after=earliest_time):
         """create list of all backups in this backup dir.
