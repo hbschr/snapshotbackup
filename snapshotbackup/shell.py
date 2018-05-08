@@ -4,7 +4,7 @@ from subprocess import PIPE, run
 
 from .exceptions import CommandNotFoundError, SyncFailedError
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def _shell(*args, silent=False):

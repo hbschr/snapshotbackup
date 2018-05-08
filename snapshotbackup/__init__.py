@@ -20,7 +20,7 @@ try:
 except LookupError as e:
     __version__ = get_distribution(__name__).version
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def make_backup(config, silent=False):

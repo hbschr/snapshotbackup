@@ -1,8 +1,3 @@
-import logging
-
-logger = logging.getLogger()
-
-
 class Error(Exception):
     """Base class for `snapshotbackup` exceptions."""
 
