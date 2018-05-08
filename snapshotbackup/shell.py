@@ -68,7 +68,7 @@ def delete_subvolume(path, silent=False):
     _shell('sudo', 'btrfs', 'subvolume', 'delete', path, silent=silent)
 
 
-def make_snapshot(source, target, silent=False):
+def make_snapshot(source, target, readonly=True, silent=False):
     """make a readonly filesystem snapshot for `source` at `target`.
 
     :param str source: filesystem path
@@ -76,7 +76,8 @@ def make_snapshot(source, target, silent=False):
     :param bool silent: suppress output on `stdout`
     """
     logger.info(f'snapshot subvolume `{source}` as `{target}`')
-    _shell('btrfs', 'subvolume', 'snapshot', '-r', source, target, silent=silent)
+    args = 'btrfs', 'subvolume', 'snapshot', '-r' if readonly else None, source, target
+    _shell(*[_a for _a in args if _a is not None], silent=silent)
 
 
 def is_btrfs(path):

@@ -1,10 +1,11 @@
+import logging
 import os
 from os.path import abspath, dirname, isdir, join
 
 from .backup import Backup
 from .exceptions import BackupDirError, LockedError, LockPathError
-from .shell import create_subvolume, is_btrfs
-from .timestamps import get_timestamp, is_timestamp
+from .shell import create_subvolume, is_btrfs, make_snapshot
+from .timestamps import get_timestamp, is_timestamp, earliest_time
 
 _sync_dir = '.sync'
 _sync_lockfile = '.sync_lock'
@@ -59,8 +60,11 @@ class BackupDir(object):
             raise BackupDirError(f'not a btrfs {self.dir}', self.dir)
 
         if assert_syncdir and not isdir(self.sync_dir):
-            # FIXME: create snapshot from last backup if possible
-            create_subvolume(self.sync_dir, silent=True)
+            try:
+                _last = self.get_backups().pop()
+                make_snapshot(join(_last.path, _last.name), self.sync_dir, readonly=False, silent=False)
+            except IndexError:
+                create_subvolume(self.sync_dir, silent=True)
 
     def lock(self):
         """lock sync dir.
@@ -77,7 +81,7 @@ class BackupDir(object):
         timestamp = get_timestamp().isoformat()
         return join(self.dir, timestamp)
 
-    def get_backups(self, retain_all_after, retain_daily_after):
+    def get_backups(self, retain_all_after=earliest_time, retain_daily_after=earliest_time):
         """create list of all backups in this backup dir.
 
         :param datetime.datetime retain_all_after:

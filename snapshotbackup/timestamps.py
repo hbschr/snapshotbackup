@@ -5,6 +5,9 @@ from dateutil.parser import isoparse
 from .exceptions import TimestampParseError
 
 
+earliest_time = isoparse('0001-01-01T00+00:00')
+
+
 def get_timestamp():
     """returns a timezone aware `datetime` object for `now`.
 
