@@ -4,10 +4,11 @@ from subprocess import PIPE, run
 
 from .exceptions import CommandNotFoundError, SyncFailedError
 
-logger = logging.getLogger(__name__)
-
 DEBUG_SHELL = 5
 """custom logging level for subprocess output"""
+
+logging.addLevelName(DEBUG_SHELL, 'DEBUG_SHELL')
+logger = logging.getLogger(__name__)
 
 
 def _shell(*args, show_output=False):

@@ -97,7 +97,6 @@ def _init_logger(log_level=0):
     :param int log_level: `0` - warning, `1` - info, `2` - debug, `3` - debug w/ shell output
     :return: None
     """
-    logging.addLevelName(DEBUG_SHELL, 'DEBUG_SHELL')
     if log_level == 0:
         level = logging.WARNING
     elif log_level == 1:
