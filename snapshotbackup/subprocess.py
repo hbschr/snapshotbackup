@@ -10,7 +10,7 @@ logging.addLevelName(DEBUG_SHELL, 'DEBUG_SHELL')
 logger = logging.getLogger(__name__)
 
 
-def _shell(*args, show_output=False):
+def _run(*args, show_output=False):
     """wrapper around `subprocess.run`: executes given command in a consistent way in this project.
 
     :param args: command arguments
@@ -20,19 +20,19 @@ def _shell(*args, show_output=False):
     :raise subprocess.CalledProcessError: if process exits with a non-zero exit code
     :return: None
 
-    >>> from snapshotbackup.shell import _shell
-    >>> _shell('true')
-    >>> _shell('true', show_output=True)
-    >>> _shell('false')
+    >>> from snapshotbackup.subprocess import _run
+    >>> _run('true')
+    >>> _run('true', show_output=True)
+    >>> _run('false')
     Traceback (most recent call last):
     subprocess.CalledProcessError: ...
-    >>> _shell('false', show_output=True)
+    >>> _run('false', show_output=True)
     Traceback (most recent call last):
     subprocess.CalledProcessError: ...
-    >>> _shell('not-a-command-whae5roo')
+    >>> _run('not-a-command-whae5roo')
     Traceback (most recent call last):
     snapshotbackup.exceptions.CommandNotFoundError: ...
-    >>> _shell('not-a-command-whae5roo', show_output=True)
+    >>> _run('not-a-command-whae5roo', show_output=True)
     Traceback (most recent call last):
     snapshotbackup.exceptions.CommandNotFoundError: ...
     """
@@ -61,7 +61,7 @@ def rsync(source, target, exclude='', progress=False):
     """
     logger.info(f'sync `{source}` to `{target}`')
     try:
-        _shell('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target, show_output=progress)
+        _run('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target, show_output=progress)
     except subprocess.CalledProcessError as e:
         logger.debug(f'raise `SyncFailedError` after catching `{e}`')
         raise SyncFailedError(target)
@@ -74,7 +74,7 @@ def create_subvolume(path):
     :return: None
     """
     logger.info(f'create subvolume `{path}`')
-    _shell('btrfs', 'subvolume', 'create', path)
+    _run('btrfs', 'subvolume', 'create', path)
 
 
 def delete_subvolume(path):
@@ -84,7 +84,7 @@ def delete_subvolume(path):
     :return: None
     """
     logger.info(f'delete subvolume `{path}`')
-    _shell('sudo', 'btrfs', 'subvolume', 'delete', path)
+    _run('sudo', 'btrfs', 'subvolume', 'delete', path)
 
 
 def make_snapshot(source, target, readonly=True):
@@ -97,7 +97,7 @@ def make_snapshot(source, target, readonly=True):
     """
     logger.info(f'snapshot subvolume `{source}` as `{target}`')
     args = 'btrfs', 'subvolume', 'snapshot', '-r' if readonly else None, source, target
-    _shell(*[_a for _a in args if _a is not None])
+    _run(*[_a for _a in args if _a is not None])
 
 
 def is_btrfs(path):
@@ -106,7 +106,7 @@ def is_btrfs(path):
     :return: bool
     """
     try:
-        _shell('btrfs', 'filesystem', 'df', path)
+        _run('btrfs', 'filesystem', 'df', path)
         return True
     except subprocess.CalledProcessError:
         return False
@@ -117,4 +117,4 @@ def btrfs_sync(path):
 
     :return: None
     """
-    _shell('btrfs', 'filesystem', 'sync', path)
+    _run('btrfs', 'filesystem', 'sync', path)

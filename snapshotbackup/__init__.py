@@ -11,7 +11,7 @@ from setuptools_scm import get_version as get_scm_version
 from .backupdir import BackupDir
 from .config import parse_config
 from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncFailedError, TimestampParseError
-from .shell import delete_subvolume, rsync, DEBUG_SHELL
+from .subprocess import delete_subvolume, rsync, DEBUG_SHELL
 
 try:
     __version__ = get_scm_version()

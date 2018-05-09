@@ -3,7 +3,7 @@ from datetime import datetime
 from os.path import abspath, isdir, join
 
 from .exceptions import BackupDirError, LockedError
-from .shell import create_subvolume, is_btrfs, make_snapshot
+from .subprocess import create_subvolume, is_btrfs, make_snapshot
 from .timestamps import earliest_time, get_timestamp, is_same_day, is_same_week, is_timestamp, parse_timestamp
 
 _sync_dir = '.sync'
