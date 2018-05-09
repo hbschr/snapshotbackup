@@ -22,7 +22,7 @@ mrproper: clean
 	rm -rf .env/
 
 lint:
-	flake8 snapshotbackup
+	flake8 .
 
 test:
 	pytest
