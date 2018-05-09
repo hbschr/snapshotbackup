@@ -16,8 +16,8 @@ _defaults = {
 def parse_config(section, file=None):
     """parse ini file and return dictionary for given section
 
-    :param file file: config file
-    :param section str: section in ini file to use
+    :param io.TextIOBase file: config file
+    :param str section: section in ini file to use
     :return dict:
     :raise FileNotFoundError: when config file cannot be found
     :raise configparser.NoSectionError: when given `section` is not found

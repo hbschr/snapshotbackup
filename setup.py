@@ -13,10 +13,13 @@ with open(join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     author='heiko huebscher',
+    author_email='heiko.huebscher@gmail.com',
     name='snapshotbackup',
-    description='backups with `rsync` and `btrfs`',
+    description='backups with `rsync` and `btrfs` snapshots',
+    keywords='backup cli commandline',
     license='MIT',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
     packages=('snapshotbackup',),

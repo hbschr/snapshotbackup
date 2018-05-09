@@ -5,43 +5,51 @@ import os
 import signal
 import sys
 from os import makedirs
-from os.path import join as path_join
 from pkg_resources import get_distribution
 from setuptools_scm import get_version as get_scm_version
-from .backup import load_backups
+
+from .backupdir import BackupDir
 from .config import parse_config
-from .exceptions import BackupDirError, CommandNotFoundError, LockedError, LockPathError, SyncFailedError
-from .lock import Lock
-from .shell import create_subvolume, delete_subvolume, make_snapshot, rsync
-from .timestamps import get_timestamp
+from .exceptions import BackupDirError, CommandNotFoundError, LockedError, LockPathError, SyncFailedError, \
+    TimestampParseError
+from .shell import delete_subvolume, rsync, DEBUG_SHELL
 
 try:
     __version__ = get_scm_version()
 except LookupError as e:
     __version__ = get_distribution(__name__).version
 
-logger = logging.getLogger()
-_sync_dir = '.sync'
+logger = logging.getLogger(__name__)
 
 
-def make_backup(config, silent=False):
-    """make a backup for given configuration."""
-    logger.debug(f'make backup w/ config `{config}`')
-    sync_target = f'{config["backups"]}/{_sync_dir}'
-    logger.info(f'syncing `{config["source"]}` to `{sync_target}`')
-    with Lock(config['backups']):
-        rsync(config['source'], sync_target, exclude=config['ignore'], silent=silent)
-    timestamp = get_timestamp().isoformat()
-    snapshot_target = f'{config["backups"]}/{timestamp}'
-    logger.info(f'snapshotting `{sync_target}` to `{snapshot_target}`')
-    make_snapshot(sync_target, snapshot_target, silent=silent)
+def make_backup(source_dir, backup_dir, ignore, progress):
+    """make a backup for given configuration.
+
+    :param str source_dir:
+    :param str backup_dir:
+    :param str ignore:
+    :param bool progress:
+    :return: None
+    """
+    logger.info(f'make backup, source_dir={source_dir}, backup_dir={backup_dir}, ignore={ignore}, progress={progress}')
+    vol = BackupDir(backup_dir, assert_syncdir=True)
+    with vol.lock():
+        rsync(source_dir, vol.sync_path, exclude=ignore, progress=progress)
+        vol.snapshot_sync()
 
 
-def list_backups(config):
-    """list all backups for given configuration."""
-    logger.debug(f'list backups w/ config `{config}`')
-    backups = load_backups(config)
-    for backup in backups:
+def list_backups(backup_dir, retain_all_after, retain_daily_after):
+    """list all backups for given configuration.
+
+    :param str backup_dir:
+    :param datetime.datetime retain_all_after:
+    :param datetime.datetime retain_daily_after:
+    :return: None
+    """
+    logger.info(f'list backups, backup_dir={backup_dir}, retain_all_after={retain_all_after}, '
+                f'retain_daily_after={retain_daily_after}')
+    vol = BackupDir(backup_dir)
+    for backup in vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after):
         retain_all = backup.is_inside_retain_all_interval
         retain_daily = backup.is_inside_retain_daily_interval
         print(f'{backup.name}'
@@ -50,59 +58,47 @@ def list_backups(config):
               f'\t{"purge candidate" if backup.purge else ""}')
 
 
-def purge_backups(config, silent=False):
-    """delete all backups for given configuration which are not held by retention policy."""
-    logger.debug(f'purge backups w/ config `{config}`')
-    backups = load_backups(config)
-    purges = [backup for backup in backups if backup.purge]
-    for purge in purges:
-        logger.info(f'purging `{purge.name}` in path `{purge.path}`')
-        delete_subvolume(path_join(purge.path, purge.name), silent=silent)
+def purge_backups(backup_dir, retain_all_after, retain_daily_after):
+    """delete all backups for given configuration which are not held by retention policy.
 
-
-def setup_paths(config, silent=False):
-    """setup backup paths for given configuration."""
-    logger.debug(f'setup paths w/ config `{config}`')
-    makedirs(config['backups'], exist_ok=True)
-    sync_target = f'{config["backups"]}/{_sync_dir}'
-    logger.info(f'create subvolume `{sync_target}`')
-    create_subvolume(sync_target, silent=silent)
-
-
-def _parse_args():
-    """argument definitions. return parsed args.
-
-    :return: :class:`argparse.Namespace`
+    :param str backup_dir:
+    :param datetime.datetime retain_all_after:
+    :param datetime.datetime retain_daily_after:
+    :return: None
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
-                        help='setup backup paths, make backup, list backups'
-                             ' or purge backups not held by retention policy')
-    parser.add_argument('name',
-                        help='section name in config file')
-    parser.add_argument('-c', '--config', type=open, metavar='filename',
-                        help='use given config file')
-    parser.add_argument('-s', '--silent', action='store_true',
-                        help='suppress output on stdout')
-    parser.add_argument('-d', '--debug', action='count', default=0,
-                        help='lower logging threshold, may be used twice')
-    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
-                        help='print version number and exit')
-    return parser.parse_args()
+    logger.info(f'purge backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
+                f'retain_daily_after={retain_daily_after}')
+    vol = BackupDir(backup_dir)
+    backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after)
+    for purge in [_b for _b in backups if _b.purge]:
+        print(f'purge {purge.name}')
+        delete_subvolume(purge.path)
+
+
+def setup_path(path):
+    """assert given path exists.
+
+    :param str path:
+    :return: None
+    """
+    logger.info(f'setup path `{path}`')
+    makedirs(path, exist_ok=True)
 
 
 def _init_logger(log_level=0):
     """increase log level.
 
-    :param log_level int: `0` - warning, `1` - info, `2` - debug
-    :return None:
+    :param int log_level: `0` - warning, `1` - info, `2` - debug, `3` - debug w/ shell output
+    :return: None
     """
     if log_level == 0:
         level = logging.WARNING
     elif log_level == 1:
         level = logging.INFO
-    else:
+    elif log_level == 2:
         level = logging.DEBUG
+    else:
+        level = DEBUG_SHELL
     logging.basicConfig(level=level)
 
 
@@ -116,20 +112,21 @@ def _exit(error_message=None):
     if error_message is None:
         logger.info(f'exit without errors')
         sys.exit()
-    logger.error(f'exit with error `{error_message}`')
+    logger.error(f'exit with error: {error_message}')
     sys.exit(1)
 
 
-def _main(configfile, configsection, action, silent=False):  # noqa: C901
+def _main(configfile, configsection, action, source, progress):  # noqa: C901
     """perform given action on given config/configsection.
     expected errors are logged.
 
     :param configfile:
-    :param configsection:
-    :param action:
-    :param silent:
+    :param str configsection:
+    :param str action:
+    :param str source:
+    :param bool progress:
     :exit 1: in case of error
-    :return None:
+    :return: None
     """
     try:
         config = parse_config(configsection, file=configfile)
@@ -137,26 +134,45 @@ def _main(configfile, configsection, action, silent=False):  # noqa: C901
         _exit(f'configuration file `{e.filename}` not found')
     except configparser.NoSectionError as e:
         _exit(f'no configuration for `{e.section}` found')
+    except TimestampParseError as e:
+        _exit(e)
 
     try:
         if action in ['s', 'setup']:
-            setup_paths(config, silent=silent)
+            setup_path(config['backups'])
         elif action in ['b', 'backup']:
-            make_backup(config, silent=silent)
+            make_backup(config['source'] if source is None else source, config['backups'], config['ignore'], progress)
         elif action in ['l', 'list']:
-            list_backups(config)
+            list_backups(config['backups'], config['retain_all_after'], config['retain_daily_after'])
         elif action in ['p', 'purge']:
-            purge_backups(config, silent=silent)
-    except BackupDirError as e:
-        _exit(f'not a directory: `{e.dir}`')
+            purge_backups(config['backups'], config['retain_all_after'], config['retain_daily_after'])
+    except (BackupDirError, LockPathError) as e:
+        _exit(e)
     except CommandNotFoundError as e:
         _exit(f'command `{e.command}` not found, mayhap missing software?')
     except LockedError as e:
         _exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
-    except LockPathError as e:
-        _exit(e)
     except SyncFailedError as e:
         _exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
+
+
+def _parse_args():
+    """argument definitions. return parsed args.
+
+    :return: :class:`argparse.Namespace`
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
+                        help='setup backup path (`mkdir -p`), make backup, list backups '
+                             'or purge backups not held by retention policy')
+    parser.add_argument('name', help='section name in config file')
+    parser.add_argument('-c', '--config', type=open, metavar='filename', help='use given config file')
+    parser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
+    parser.add_argument('--source', help='use given path as source for backup')
+    parser.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used thrice')
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}', help='print version '
+                                                                                                     'number and exit')
+    return parser.parse_args()
 
 
 def _signal_handler(signal, _):
@@ -181,8 +197,9 @@ def main():
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
         _init_logger(log_level=args.debug)
-        logger.info(f'start w/ pid `{os.getpid()}`')
-        _main(configfile=args.config, configsection=args.name, action=args.action, silent=args.silent)
+        logger.info(f'backup {args.name} start w/ pid `{os.getpid()}`')
+        _main(configfile=args.config, configsection=args.name, action=args.action, source=args.source,
+              progress=args.progress)
     except KeyboardInterrupt:
         _exit('keyboard interrupt')
     except Exception as e:

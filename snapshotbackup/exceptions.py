@@ -1,8 +1,3 @@
-import logging
-
-logger = logging.getLogger()
-
-
 class Error(Exception):
     """Base class for `snapshotbackup` exceptions."""
 
@@ -15,18 +10,18 @@ class Error(Exception):
 
 
 class BackupDirError(Error):
-    """backup directory is no directory. run setup.
+    """backup directory related error with meaningful message.
 
     >>> from snapshotbackup.exceptions import BackupDirError
-    >>> raise BackupDirError('/test')
+    >>> raise BackupDirError('something wrong with /test', '/test')
     Traceback (most recent call last):
     snapshotbackup.exceptions.BackupDirError: ...
     """
-    dir: str
+    path: str
 
-    def __init__(self, dir):
-        super().__init__(f'BackupDirError: {dir}')
-        self.dir = dir
+    def __init__(self, message, path):
+        super().__init__(message)
+        self.path = path
 
 
 class CommandNotFoundError(Error):
@@ -60,8 +55,8 @@ class TimestampParseError(Error):
     def __init__(self, message, error=None):
         """wrapper for several timestamp parsing related errors.
 
-        :param message str: string representation of this error
-        :param error Exception: error thrown from imported timestamp parser
+        :param str message: string representation of this error
+        :param Exception error: error thrown from imported timestamp parser
         """
         super().__init__(message)
         self.error = error

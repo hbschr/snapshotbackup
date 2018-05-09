@@ -39,6 +39,8 @@ retain_all = '1 week'
 usage
 --
 
+the setup-step can be skipped if configured backup directory already exists.
+
 ```
 snapshotbackup -c config.ini setup data1
 snapshotbackup -c config.ini backup data1

@@ -5,6 +5,9 @@ from dateutil.parser import isoparse
 from .exceptions import TimestampParseError
 
 
+earliest_time = isoparse('0001-01-01T00+00:00')
+
+
 def get_timestamp():
     """returns a timezone aware `datetime` object for `now`.
 
@@ -20,7 +23,7 @@ def get_timestamp():
 def parse_timestamp(string):
     """parse an iso timestamp string, return corresponding `datetime` object.
 
-    :param string str: iso timestamp
+    :param str string: iso timestamp
     :return datetime datetime:
     :raise TimestampParseError:
 
@@ -43,7 +46,7 @@ def parse_timestamp(string):
 def parse_human_readable_relative_dates(string: str) -> datetime:
     """parse human readable relative dates.
 
-    :param string str:
+    :param str string:
     :return datetime datetime:
     :raise TimestampParseError:
 
@@ -64,7 +67,7 @@ def parse_human_readable_relative_dates(string: str) -> datetime:
 def is_timestamp(string):
     """test if given string is a valid iso timestamp.
 
-    :param string str:
+    :param str string:
     :return bool: if given string could be parsed as valid timestamp
 
     >>> from snapshotbackup.timestamps import is_timestamp
@@ -83,8 +86,8 @@ def is_timestamp(string):
 def is_same_hour(date1: datetime, date2: datetime) -> bool:
     """test if given datetime objects are in the same hour.
 
-    :param date1 datetime:
-    :param date2 datetime:
+    :param datetime.datetime date1:
+    :param datetime.datetime date2:
     :return bool:
 
     >>> from snapshotbackup.timestamps import is_same_hour
@@ -103,8 +106,8 @@ def is_same_hour(date1: datetime, date2: datetime) -> bool:
 def is_same_day(date1: datetime, date2: datetime) -> bool:
     """test if given datetime objects are on the same day.
 
-    :param date1 datetime:
-    :param date2 datetime:
+    :param datetime.datetime date1:
+    :param datetime.datetime date2:
     :return bool:
 
     >>> from snapshotbackup.timestamps import is_same_day
@@ -123,8 +126,8 @@ def is_same_day(date1: datetime, date2: datetime) -> bool:
 def is_same_week(date1: datetime, date2: datetime) -> bool:
     """test if given datetime objects are in the same week.
 
-    :param date1 datetime:
-    :param date2 datetime:
+    :param datetime.datetime date1:
+    :param datetime.datetime date2:
     :return bool:
 
     >>> from snapshotbackup.timestamps import is_same_week
