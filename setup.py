@@ -19,6 +19,7 @@ setup(
     keywords='backup cli commandline',
     license='MIT',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
     packages=('snapshotbackup',),
