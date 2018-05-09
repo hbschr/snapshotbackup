@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from os.path import abspath, isdir, join
 
-from .exceptions import BackupDirError, LockedError, LockPathError
+from .exceptions import BackupDirError, LockedError
 from .shell import create_subvolume, is_btrfs, make_snapshot
 from .timestamps import earliest_time, get_timestamp, is_same_day, is_same_week, is_timestamp, parse_timestamp
 
@@ -14,16 +14,24 @@ class BackupDir(object):
     """a backup dir contains all snapshots and a sync dir.
     the directory must be reachable via file system and has to be on a btrfs filesystem.
 
-    optional this class provides a sync dir (btrfs subvolume) which can be locked. for more checks consult
-    :func:`__init__`.
+    optional this class provides a sync dir (btrfs subvolume) which can be locked.
+    for more details about checks consult :func:`__init__`.
 
-    >>> import tempfile
-    >>> from os.path import join
+    >>> import os, os.path, stat, tempfile
     >>> from snapshotbackup.backupdir import BackupDir
     >>> with tempfile.TemporaryDirectory() as path:
-    ...     BackupDir(join(path, 'nope')).get_backups()
+    ...     BackupDir(os.path.join(path, 'nope'))
     Traceback (most recent call last):
-    snapshotbackup.exceptions.BackupDirError: ...
+    snapshotbackup.exceptions.BackupDirError: not a directory ...
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     os.chmod(path, stat.S_IRUSR)
+    ...     BackupDir(path, assert_writable=True)
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.BackupDirError: not writable ...
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     BackupDir(path)
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.BackupDirError: not a btrfs ...
     """
 
     path: str
@@ -170,7 +178,7 @@ class Backup(object):
     def __init__(self, name, vol, retain_all_after, retain_daily_after, next=None):
         """initialize a backup object.
 
-        :param str name: name of this backup, also a iso timestamp
+        :param str name: name of this backup, also an iso timestamp
         :param BackupDir vol: backup directory this backup lives in
         :param datetime.datetime retain_all: backup will not be purged if it is after this timestamp
         :param datetime.datetime retain_daily: backup will not be purged if it is after this timestamp and a daily
@@ -232,7 +240,7 @@ class Lock(object):
     ...     with Lock(join(path, 'nope')):
     ...         pass
     Traceback (most recent call last):
-    snapshotbackup.exceptions.LockPathError: ...
+    FileNotFoundError: ...
     """
     _dir: str
     """full path to directory"""
@@ -252,7 +260,7 @@ class Lock(object):
         """enter locked context
 
         :raise LockedError: when already locked
-        :raise LockPathError: when path of lockfile is not found
+        :raise FileNotFoundError: when path of lockfile is not found
         :raise OSError: others may occur
         """
         try:
@@ -260,11 +268,7 @@ class Lock(object):
             raise LockedError(self._lockfile)
         except FileNotFoundError as e:
             pass
-
-        try:
-            open(self._lockfile, 'w').close()
-        except FileNotFoundError as e:
-            raise LockPathError(self._dir)
+        open(self._lockfile, 'w').close()
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         """exit locked context, lockfile will be removed"""

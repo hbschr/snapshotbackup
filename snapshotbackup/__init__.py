@@ -10,7 +10,7 @@ from setuptools_scm import get_version as get_scm_version
 
 from .backupdir import BackupDir
 from .config import parse_config
-from .exceptions import BackupDirError, CommandNotFoundError, LockedError, LockPathError, SyncFailedError, \
+from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncFailedError, \
     TimestampParseError
 from .shell import delete_subvolume, rsync, DEBUG_SHELL
 
@@ -78,6 +78,14 @@ def purge_backups(backup_dir, retain_all_after, retain_daily_after):
 def setup_path(path):
     """assert given path exists.
 
+    >>> import os.path, tempfile
+    >>> from snapshotbackup import setup_path
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     newdir = os.path.join(path, 'long', 'path')
+    ...     setup_path(newdir)
+    ...     os.path.isdir(newdir)
+    True
+
     :param str path:
     :return: None
     """
@@ -87,6 +95,12 @@ def setup_path(path):
 
 def _init_logger(log_level=0):
     """increase log level.
+
+    >>> from snapshotbackup import _init_logger
+    >>> _init_logger(0)
+    >>> _init_logger(1)
+    >>> _init_logger(2)
+    >>> _init_logger(3)
 
     :param int log_level: `0` - warning, `1` - info, `2` - debug, `3` - debug w/ shell output
     :return: None
@@ -104,6 +118,20 @@ def _init_logger(log_level=0):
 
 def _exit(error_message=None):
     """log and exit.
+
+    >>> from snapshotbackup import _exit
+    >>> _exit()
+    Traceback (most recent call last):
+    SystemExit
+    >>> try:
+    ...     _exit()
+    ... except SystemExit as e:
+    ...     e.code
+    >>> try:
+    ...     _exit('xxx')
+    ... except SystemExit as e:
+    ...     e.code
+    1
 
     :param str error_message: will be logged. changes exit status to `1`.
     :exit 0: success
@@ -146,7 +174,7 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
             list_backups(config['backups'], config['retain_all_after'], config['retain_daily_after'])
         elif action in ['p', 'purge']:
             purge_backups(config['backups'], config['retain_all_after'], config['retain_daily_after'])
-    except (BackupDirError, LockPathError) as e:
+    except BackupDirError as e:
         _exit(e)
     except CommandNotFoundError as e:
         _exit(f'command `{e.command}` not found, mayhap missing software?')
@@ -159,6 +187,14 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
 def _parse_args():
     """argument definitions. return parsed args.
 
+    >>> from snapshotbackup import _parse_args
+    >>> try:
+    ...     _parse_args()
+    ... except SystemExit as e:
+    ...     e.code
+    2
+
+    :exit 2: argument error
     :return: :class:`argparse.Namespace`
     """
     parser = argparse.ArgumentParser()
@@ -176,7 +212,17 @@ def _parse_args():
 
 
 def _signal_handler(signal, _):
-    """handle registered signals, probably just `SIGTERM`."""
+    """handle registered signals, probably just `SIGTERM`.
+
+    >>> from snapshotbackup import _signal_handler
+    >>> try:
+    ...     _signal_handler('signal', 'frame')
+    ... except SystemExit as e:
+    ...     e.code
+    1
+
+    :exit 1:
+    """
     _exit(f'got signal {signal}')
 
 

@@ -1,6 +1,5 @@
 import logging
 import subprocess
-from subprocess import PIPE, run
 
 from .exceptions import CommandNotFoundError, SyncFailedError
 
@@ -19,6 +18,7 @@ def _shell(*args, show_output=False):
     :param bool show_output: if `True` shell output will be shown on `stdout` and `stderr`
     :raise CommandNotFoundError: if command cannot be found
     :raise subprocess.CalledProcessError: if process exits with a non-zero exit code
+    :return: None
 
     >>> from snapshotbackup.shell import _shell
     >>> _shell('true')
@@ -38,9 +38,9 @@ def _shell(*args, show_output=False):
     """
     try:
         if show_output:
-            run(args, check=True)
+            subprocess.run(args, check=True)
         else:
-            completed_process = run(args, stdout=PIPE, stderr=PIPE)
+            completed_process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             logger.log(DEBUG_SHELL, f'stdout: {completed_process.stdout.decode("utf-8")}')
             logger.log(DEBUG_SHELL, f'stderr: {completed_process.stderr.decode("utf-8")}')
             completed_process.check_returncode()
@@ -56,6 +56,8 @@ def rsync(source, target, exclude='', progress=False):
     :param str target: path to write to
     :param str exclude: paths to exclude
     :param bool progress: show some progress information
+    :raise SyncFailedError: when sync is interrupted
+    :return: None
     """
     logger.info(f'sync `{source}` to `{target}`')
     try:
@@ -69,6 +71,7 @@ def create_subvolume(path):
     """create a subvolume in filesystem for given `path`.
 
     :param str path: filesystem path
+    :return: None
     """
     logger.info(f'create subvolume `{path}`')
     _shell('btrfs', 'subvolume', 'create', path)
@@ -78,6 +81,7 @@ def delete_subvolume(path):
     """delete subvolume in filesystem at given `path`.
 
     :param str path: filesystem path
+    :return: None
     """
     logger.info(f'delete subvolume `{path}`')
     _shell('sudo', 'btrfs', 'subvolume', 'delete', path)
@@ -89,6 +93,7 @@ def make_snapshot(source, target, readonly=True):
     :param str source: filesystem path
     :param str target: filesystem path
     :param bool readonly: if `True` snapshot will not be writable
+    :return: None
     """
     logger.info(f'snapshot subvolume `{source}` as `{target}`')
     args = 'btrfs', 'subvolume', 'snapshot', '-r' if readonly else None, source, target
@@ -96,6 +101,10 @@ def make_snapshot(source, target, readonly=True):
 
 
 def is_btrfs(path):
+    """check if given path is on a btrfs filesystem.
+
+    :return: bool
+    """
     try:
         _shell('btrfs', 'filesystem', 'df', path)
         return True
@@ -104,4 +113,8 @@ def is_btrfs(path):
 
 
 def btrfs_sync(path):
+    """force a sync of the filesystem at path. that's like a btrfs-aware `sync`.
+
+    :return: None
+    """
     _shell('btrfs', 'filesystem', 'sync', path)
