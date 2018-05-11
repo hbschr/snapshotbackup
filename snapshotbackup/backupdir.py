@@ -28,10 +28,6 @@ class BackupDir(object):
     ...     BackupDir(path, assert_writable=True)
     Traceback (most recent call last):
     snapshotbackup.exceptions.BackupDirError: not writable ...
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     BackupDir(path)
-    Traceback (most recent call last):
-    snapshotbackup.exceptions.BackupDirError: not a btrfs ...
     """
 
     path: str
@@ -76,7 +72,7 @@ class BackupDir(object):
     def lock(self):
         """lock sync dir.
 
-        :return object: a :class:`snapshotbackup.lock.Lock` context
+        :return object: a :class:`snapshotbackup.backupdir.Lock` context
         """
         return Lock(self.path)
 
@@ -100,6 +96,7 @@ class BackupDir(object):
             dirs = [dir for dir in dirs if is_timestamp(dir)]
             break
 
+        dirs.sort()
         backups = []
         for backup in reversed(dirs):
             if len(backups) == 0:
@@ -222,7 +219,8 @@ class Lock(object):
     """lockfile as context manager
 
     :raise LockedError: when lockfile already exists
-    :raise LockPathError: when lockfile cannot be created (missing dir)
+    :raise FileNotFoundError: when lockfile cannot be created (missing dir)
+    :raise OSError: others may occur
 
     >>> import tempfile
     >>> from os.path import join
@@ -257,12 +255,7 @@ class Lock(object):
         self._lockfile = join(self._dir, _sync_lockfile)
 
     def __enter__(self):
-        """enter locked context
-
-        :raise LockedError: when already locked
-        :raise FileNotFoundError: when path of lockfile is not found
-        :raise OSError: others may occur
-        """
+        """enter locked context, create lockfile or throw errors."""
         try:
             open(self._lockfile, 'r').close()
             raise LockedError(self._lockfile)
@@ -271,5 +264,5 @@ class Lock(object):
         open(self._lockfile, 'w').close()
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        """exit locked context, lockfile will be removed"""
+        """exit locked context, lockfile will be removed."""
         os.remove(self._lockfile)
