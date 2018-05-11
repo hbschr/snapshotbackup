@@ -6,17 +6,13 @@ import signal
 import sys
 from os import makedirs
 from pkg_resources import get_distribution
-from setuptools_scm import get_version as get_scm_version
 
 from .backupdir import BackupDir
 from .config import parse_config
 from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncFailedError, TimestampParseError
 from .subprocess import delete_subvolume, rsync, DEBUG_SHELL
 
-try:
-    __version__ = get_scm_version()
-except LookupError as e:
-    __version__ = get_distribution(__name__).version
+__version__ = get_distribution(__name__).version
 
 logger = logging.getLogger(__name__)
 
@@ -125,12 +121,11 @@ def _exit(error_message=None):
     >>> try:
     ...     _exit()
     ... except SystemExit as e:
-    ...     e.code
+    ...     assert e.code is None
     >>> try:
     ...     _exit('xxx')
     ... except SystemExit as e:
-    ...     e.code
-    1
+    ...     assert e.code == 1
 
     :param str error_message: will be logged. changes exit status to `1`.
     :exit 0: success
