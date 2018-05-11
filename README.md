@@ -75,7 +75,7 @@ dev env
 virtualenv .env -p python3
 . .env/bin/activate
 pip install -r requirements.txt
-./setup.py develop
+pip install -e .
 ```
 
 
