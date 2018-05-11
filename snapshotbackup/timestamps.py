@@ -79,7 +79,7 @@ def is_timestamp(string):
     try:
         parse_timestamp(string)
         return True
-    except TimestampParseError as e:
+    except TimestampParseError:
         return False
 
 
