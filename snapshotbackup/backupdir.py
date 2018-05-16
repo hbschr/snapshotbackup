@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-from os.path import abspath, isdir, join
 
 from .exceptions import BackupDirError, LockedError
 from .subprocess import create_subvolume, is_btrfs, make_snapshot
@@ -50,10 +49,10 @@ class BackupDir(object):
         :param bool assert_writable bool: if true write access for current process will be checked
         :raise BackupDirError: error with meaningful message
         """
-        self.path = abspath(dir)
-        self.sync_path = join(self.path, _sync_dir)
+        self.path = os.path.abspath(dir)
+        self.sync_path = os.path.join(self.path, _sync_dir)
 
-        if not isdir(self.path):
+        if not os.path.isdir(self.path):
             raise BackupDirError(f'not a directory {self.path}', self.path)
 
         if (assert_writable or assert_syncdir) and not os.access(self.path, os.W_OK):
@@ -62,7 +61,7 @@ class BackupDir(object):
         if not is_btrfs(self.path):
             raise BackupDirError(f'not a btrfs {self.path}', self.path)
 
-        if assert_syncdir and not isdir(self.sync_path):
+        if assert_syncdir and not os.path.isdir(self.sync_path):
             try:
                 _last = self.get_backups().pop()
                 make_snapshot(_last.path, self.sync_path, readonly=False)
@@ -81,7 +80,7 @@ class BackupDir(object):
 
         :return: None
         """
-        target_path = join(self.path, get_timestamp().isoformat())
+        target_path = os.path.join(self.path, get_timestamp().isoformat())
         make_snapshot(self.sync_path, target_path)
 
     def get_backups(self, retain_all_after=earliest_time, retain_daily_after=earliest_time):
@@ -185,7 +184,7 @@ class Backup(object):
         self.name = name
         self.datetime = parse_timestamp(name)
         self.vol = vol
-        self.path = join(self.vol.path, self.name)
+        self.path = os.path.join(self.vol.path, self.name)
         self.is_inside_retain_all_interval = self._is_after_or_equal(retain_all_after)
         self.is_inside_retain_daily_interval = self._is_after_or_equal(retain_daily_after)
         if not next:
@@ -223,7 +222,7 @@ class Lock(object):
     :raise OSError: others may occur
 
     >>> import tempfile
-    >>> from os.path import join
+    >>> import os.path
     >>> from snapshotbackup.backupdir import Lock
     >>> with tempfile.TemporaryDirectory() as path:
     ...     with Lock(path):
@@ -235,7 +234,7 @@ class Lock(object):
     Traceback (most recent call last):
     snapshotbackup.exceptions.LockedError: ...
     >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(join(path, 'nope')):
+    ...     with Lock(os.path.join(path, 'nope')):
     ...         pass
     Traceback (most recent call last):
     FileNotFoundError: ...
@@ -251,8 +250,8 @@ class Lock(object):
 
         :param str dir: path where lockfile shall be created
         """
-        self._dir = abspath(dir)
-        self._lockfile = join(self._dir, _sync_lockfile)
+        self._dir = os.path.abspath(dir)
+        self._lockfile = os.path.join(self._dir, _sync_lockfile)
 
     def __enter__(self):
         """enter locked context, create lockfile or throw errors."""

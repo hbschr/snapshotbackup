@@ -4,7 +4,6 @@ import logging
 import os
 import signal
 import sys
-from os import makedirs
 from pkg_resources import get_distribution
 
 from .backupdir import BackupDir
@@ -85,7 +84,7 @@ def setup_path(path):
     :return: None
     """
     logger.info(f'setup path `{path}`')
-    makedirs(path, exist_ok=True)
+    os.makedirs(path, exist_ok=True)
 
 
 def _init_logger(log_level=0):
