@@ -132,9 +132,9 @@ def _exit(error_message=None):
     :exit 1: error
     """
     if error_message is None:
-        logger.info(f'exit without errors')
+        logger.info(f'pid `{os.getpid()}` exit without errors')
         sys.exit()
-    logger.error(f'exit with error: {error_message}')
+    logger.error(f'pid `{os.getpid()}` exit with error: {error_message}')
     sys.exit(1)
 
 
@@ -237,7 +237,7 @@ def main():
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
         _init_logger(log_level=args.debug)
-        logger.info(f'backup {args.name} start w/ pid `{os.getpid()}`')
+        logger.info(f'start `{args.name}` w/ pid `{os.getpid()}`')
         _main(configfile=args.config, configsection=args.name, action=args.action, source=args.source,
               progress=args.progress)
     except KeyboardInterrupt:
