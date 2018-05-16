@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 
 from .exceptions import CommandNotFoundError, SyncFailedError
@@ -62,6 +63,7 @@ def rsync(source, target, exclude='', progress=False):
     logger.info(f'sync `{source}` to `{target}`')
     try:
         _run('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target, show_output=progress)
+        btrfs_sync(target)
     except subprocess.CalledProcessError as e:
         logger.debug(f'raise `SyncFailedError` after catching `{e}`')
         raise SyncFailedError(target)
@@ -75,6 +77,7 @@ def create_subvolume(path):
     """
     logger.info(f'create subvolume `{path}`')
     _run('btrfs', 'subvolume', 'create', path)
+    btrfs_sync(path)
 
 
 def delete_subvolume(path):
@@ -85,6 +88,7 @@ def delete_subvolume(path):
     """
     logger.info(f'delete subvolume `{path}`')
     _run('sudo', 'btrfs', 'subvolume', 'delete', path)
+    btrfs_sync(os.path.dirname(path))
 
 
 def make_snapshot(source, target, readonly=True):
@@ -98,6 +102,7 @@ def make_snapshot(source, target, readonly=True):
     logger.info(f'snapshot subvolume `{source}` as `{target}`')
     args = 'btrfs', 'subvolume', 'snapshot', '-r' if readonly else None, source, target
     _run(*[_a for _a in args if _a is not None])
+    btrfs_sync(target)
 
 
 def is_btrfs(path):

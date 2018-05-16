@@ -39,7 +39,7 @@ def test_run_not_silent(_):
 @patch('subprocess.run')
 def test_rsync_success(_):
     snapshotbackup.subprocess.rsync('source', 'target')
-    subprocess.run.assert_called_once()
+    assert subprocess.run.call_count == 2
 
 
 @patch('subprocess.run', side_effect=subprocess.CalledProcessError(1, 'command'))
@@ -52,27 +52,27 @@ def test_rsync_interrupted(_):
 @patch('subprocess.run')
 def test_create_subvolume(_):
     snapshotbackup.subprocess.create_subvolume('path')
-    subprocess.run.assert_called_once()
+    assert subprocess.run.call_count == 2
 
 
 @patch('subprocess.run')
 def test_delete_subvolume(_):
     snapshotbackup.subprocess.delete_subvolume('is_btrfs')
-    subprocess.run.assert_called_once()
+    assert subprocess.run.call_count == 2
 
 
 @patch('subprocess.run')
 def test_make_snapshot(_):
     snapshotbackup.subprocess.make_snapshot('source', 'target')
-    subprocess.run.assert_called_once()
-    assert '-r' in subprocess.run.call_args[0][0]
+    assert subprocess.run.call_count == 2
+    assert '-r' in subprocess.run.call_args_list[0][0][0]
 
 
 @patch('subprocess.run')
 def test_make_snapshot_writable(_):
     snapshotbackup.subprocess.make_snapshot('source', 'target', readonly=False)
-    subprocess.run.assert_called_once()
-    assert '-r' not in subprocess.run.call_args[0][0]
+    assert subprocess.run.call_count == 2
+    assert '-r' not in subprocess.run.call_args_list[0][0][0]
 
 
 @patch('subprocess.run')
