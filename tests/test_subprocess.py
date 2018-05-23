@@ -16,17 +16,17 @@ def test_mock_with_decorator(_):
 
 
 def test_run_true():
-    assert snapshotbackup.subprocess._run('true') is None
+    assert snapshotbackup.subprocess.run('true') is None
 
 
 def test_run_false():
     with pytest.raises(subprocess.CalledProcessError):
-        snapshotbackup.subprocess._run('false')
+        snapshotbackup.subprocess.run('false')
 
 
 @patch('subprocess.run')
 def test_run_silent(_):
-    snapshotbackup.subprocess._run('example')
+    snapshotbackup.subprocess.run('example')
     assert subprocess.run.call_args[0] == (('example',),)
     kwargs = subprocess.run.call_args[1]
     assert 'stdout' in kwargs and kwargs['stdout'] == subprocess.PIPE
@@ -35,7 +35,7 @@ def test_run_silent(_):
 
 @patch('subprocess.run')
 def test_run_not_silent(_):
-    snapshotbackup.subprocess._run('example', show_output=True)
+    snapshotbackup.subprocess.run('example', show_output=True)
     assert subprocess.run.call_args[0] == (('example',),)
     kwargs = subprocess.run.call_args[1]
     assert 'stdout' not in kwargs
