@@ -32,6 +32,6 @@ def parse_config(section, file=None):
         'source': config[section]['source'],
         'backups': config[section]['backups'],
         'ignore': config[section]['ignore'],
-        'retain_all_after': parse_human_readable_relative_dates(config.get(section, 'retain_all')),
-        'retain_daily_after': parse_human_readable_relative_dates(config.get(section, 'retain_daily')),
+        'retain_all_after': parse_human_readable_relative_dates(config[section]['retain_all']),
+        'retain_daily_after': parse_human_readable_relative_dates(config[section]['retain_daily']),
     }
