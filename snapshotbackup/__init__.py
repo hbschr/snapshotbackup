@@ -5,8 +5,9 @@ import os
 import signal
 import sys
 from pkg_resources import get_distribution
+from systemd.journal import JournalHandler
 
-from snapshotbackup.notify import send_notification
+from .notify import send_notification
 from .backupdir import BackupDir
 from .config import parse_config
 from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncFailedError, TimestampParseError
@@ -88,7 +89,7 @@ def setup_path(path):
     os.makedirs(path, exist_ok=True)
 
 
-def _init_logger(log_level=0):
+def _init_logger(log_level=0, silent=False):
     """increase log level.
 
     >>> from snapshotbackup import _init_logger
@@ -108,7 +109,7 @@ def _init_logger(log_level=0):
         level = logging.DEBUG
     else:
         level = DEBUG_SHELL
-    logging.basicConfig(level=level)
+    logging.basicConfig(level=level, handlers=[JournalHandler(SYSLOG_IDENTIFIER=__name__)] if silent else None)
 
 
 def _exit(error_message=None):
@@ -192,18 +193,19 @@ def _parse_args():
     :exit 2: argument error
     :return: :class:`argparse.Namespace`
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
-                        help='setup backup path (`mkdir -p`), make backup, list backups '
-                             'or purge backups not held by retention policy')
-    parser.add_argument('name', help='section name in config file')
-    parser.add_argument('-c', '--config', type=open, metavar='filename', help='use given config file')
-    parser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
-    parser.add_argument('--source', help='use given path as source for backup')
-    parser.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used thrice')
-    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}', help='print version '
-                                                                                                     'number and exit')
-    return parser.parse_args()
+    p = argparse.ArgumentParser()
+    p.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
+                   help='setup backup path (`mkdir -p`), make backup, list backups '
+                        'or purge backups not held by retention policy')
+    p.add_argument('name', help='section name in config file')
+    p.add_argument('-c', '--config', type=open, metavar='CONFIGFILE', help='use given config file')
+    p.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used thrice')
+    p.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
+    p.add_argument('-s', '--silent', action='store_true', help='silent mode, log to systemd journal instead of stdout')
+    p.add_argument('--source', help='use given path as source for backup')
+    p.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}', help='print version number '
+                                                                                                'and exit')
+    return p.parse_args()
 
 
 def _signal_handler(signal, _):
@@ -237,7 +239,7 @@ def main():
     try:
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
-        _init_logger(log_level=args.debug)
+        _init_logger(log_level=args.debug, silent=args.silent)
         logger.info(f'start `{args.name}` w/ pid `{os.getpid()}`')
         _main(configfile=args.config, configsection=args.name, action=args.action, source=args.source,
               progress=args.progress)
