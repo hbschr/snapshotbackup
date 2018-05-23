@@ -37,6 +37,7 @@ def _run(*args, show_output=False):
     Traceback (most recent call last):
     snapshotbackup.exceptions.CommandNotFoundError: ...
     """
+    logger.log(DEBUG_SHELL, f'run {args}, show_output={show_output}')
     try:
         if show_output:
             subprocess.run(args, check=True)
@@ -99,7 +100,7 @@ def make_snapshot(source, target, readonly=True):
     :param bool readonly: if `True` snapshot will not be writable
     :return: None
     """
-    logger.info(f'snapshot subvolume `{source}` as `{target}`')
+    logger.info(f'create snapshot `{target}`')
     args = 'btrfs', 'subvolume', 'snapshot', '-r' if readonly else None, source, target
     _run(*[_a for _a in args if _a is not None])
     btrfs_sync(target)
