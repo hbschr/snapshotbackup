@@ -27,13 +27,19 @@ def test_run_false():
 @patch('subprocess.run')
 def test_run_silent(_):
     snapshotbackup.subprocess._run('example')
-    subprocess.run.assert_called_once_with(('example',), stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    assert subprocess.run.call_args[0] == (('example',),)
+    kwargs = subprocess.run.call_args[1]
+    assert 'stdout' in kwargs and kwargs['stdout'] == subprocess.PIPE
+    assert 'stderr' in kwargs and kwargs['stderr'] == subprocess.PIPE
 
 
 @patch('subprocess.run')
 def test_run_not_silent(_):
     snapshotbackup.subprocess._run('example', show_output=True)
-    subprocess.run.assert_called_once_with(('example',), check=True)
+    assert subprocess.run.call_args[0] == (('example',),)
+    kwargs = subprocess.run.call_args[1]
+    assert 'stdout' not in kwargs
+    assert 'stderr' not in kwargs
 
 
 @patch('subprocess.run')
