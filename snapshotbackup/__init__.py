@@ -6,6 +6,7 @@ import signal
 import sys
 from pkg_resources import get_distribution
 
+from snapshotbackup.notify import send_notification
 from .backupdir import BackupDir
 from .config import parse_config
 from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncFailedError, TimestampParseError
@@ -163,6 +164,7 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
             setup_path(config['backups'])
         elif action in ['b', 'backup']:
             make_backup(config['source'] if source is None else source, config['backups'], config['ignore'], progress)
+            send_notification(__name__, f'backup `{configsection}` finished', notify_remote=config['notify_remote'])
         elif action in ['l', 'list']:
             list_backups(config['backups'], config['retain_all_after'], config['retain_daily_after'])
         elif action in ['p', 'purge']:
