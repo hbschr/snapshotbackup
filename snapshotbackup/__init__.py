@@ -250,6 +250,8 @@ def main():
         logger.info(f'start `{args.name}` w/ pid `{os.getpid()}`')
         _main(configfile=args.config, configsection=args.name, action=args.action, source=args.source,
               progress=args.progress)
+    except ModuleNotFoundError as e:
+        _exit(f'dependency for optional feature not found, missing module: {e.name}')
     except KeyboardInterrupt:
         _exit('keyboard interrupt')
     except Exception as e:
