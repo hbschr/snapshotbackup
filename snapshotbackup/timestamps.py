@@ -40,7 +40,7 @@ def parse_timestamp(string):
     except (ValueError, OverflowError) as e:
         # ValueError: invalid date
         # OverflowError: parsed date exceeds the largest valid C integer
-        raise TimestampParseError(str(e), error=e)
+        raise TimestampParseError(str(e), error=e) from e
 
 
 def parse_human_readable_relative_dates(string: str) -> datetime:

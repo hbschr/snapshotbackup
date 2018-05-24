@@ -48,7 +48,7 @@ def run(*args, show_output=False):
             completed_process.check_returncode()
     except FileNotFoundError as e:
         logger.debug(f'raise `CommandNotFoundError` after catching `{e}`')
-        raise CommandNotFoundError(e.filename)
+        raise CommandNotFoundError(e.filename) from e
 
 
 def rsync(source, target, exclude='', progress=False):
@@ -67,7 +67,7 @@ def rsync(source, target, exclude='', progress=False):
         btrfs_sync(target)
     except subprocess.CalledProcessError as e:
         logger.debug(f'raise `SyncFailedError` after catching `{e}`')
-        raise SyncFailedError(target)
+        raise SyncFailedError(target) from e
 
 
 def create_subvolume(path):
