@@ -1,24 +1,20 @@
 import argparse
 import configparser
+import importlib
 import logging
 import os
 import signal
 import sys
-from os import makedirs
 from pkg_resources import get_distribution
-from setuptools_scm import get_version as get_scm_version
 
+from .notify import send_notification
 from .backupdir import BackupDir
 from .config import parse_config
-from .exceptions import BackupDirError, CommandNotFoundError, LockedError, LockPathError, SyncFailedError, \
-    TimestampParseError
-from .shell import delete_subvolume, rsync, DEBUG_SHELL
+from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncFailedError, TimestampParseError
+from .subprocess import delete_subvolume, rsync, DEBUG_SHELL
 
-try:
-    __version__ = get_scm_version()
-except LookupError as e:
-    __version__ = get_distribution(__name__).version
-
+__version__ = get_distribution(__name__).version
+_config = None   # FIXME: make config a proper singleton or find another solution
 logger = logging.getLogger(__name__)
 
 
@@ -78,15 +74,29 @@ def purge_backups(backup_dir, retain_all_after, retain_daily_after):
 def setup_path(path):
     """assert given path exists.
 
+    >>> import os.path, tempfile
+    >>> from snapshotbackup import setup_path
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     newdir = os.path.join(path, 'long', 'path')
+    ...     setup_path(newdir)
+    ...     os.path.isdir(newdir)
+    True
+
     :param str path:
     :return: None
     """
     logger.info(f'setup path `{path}`')
-    makedirs(path, exist_ok=True)
+    os.makedirs(path, exist_ok=True)
 
 
-def _init_logger(log_level=0):
+def _init_logger(log_level=0, silent=False):
     """increase log level.
+
+    >>> from snapshotbackup import _init_logger
+    >>> _init_logger(0)
+    >>> _init_logger(1)
+    >>> _init_logger(2)
+    >>> _init_logger(3)
 
     :param int log_level: `0` - warning, `1` - info, `2` - debug, `3` - debug w/ shell output
     :return: None
@@ -99,21 +109,53 @@ def _init_logger(log_level=0):
         level = logging.DEBUG
     else:
         level = DEBUG_SHELL
-    logging.basicConfig(level=level)
+    handlers = [importlib.import_module('systemd.journal').JournalHandler(SYSLOG_IDENTIFIER=__name__)] \
+        if silent else None
+    logging.basicConfig(level=level, handlers=handlers)
 
 
 def _exit(error_message=None):
     """log and exit.
+
+    >>> from snapshotbackup import _exit
+    >>> _exit()
+    Traceback (most recent call last):
+    SystemExit
+    >>> try:
+    ...     _exit()
+    ... except SystemExit as e:
+    ...     assert e.code is None
+    >>> try:
+    ...     _exit('xxx')
+    ... except SystemExit as e:
+    ...     assert e.code == 1
 
     :param str error_message: will be logged. changes exit status to `1`.
     :exit 0: success
     :exit 1: error
     """
     if error_message is None:
-        logger.info(f'exit without errors')
+        logger.info(f'pid `{os.getpid()}` exit without errors')
         sys.exit()
-    logger.error(f'exit with error: {error_message}')
+    logger.error(f'pid `{os.getpid()}` exit with error: {error_message}')
+    send_notification(__name__, f'backup failed with error:\n{error_message}', error=True,
+                      notify_remote=_config['notify_remote'] if _config else None)
     sys.exit(1)
+
+
+def _signal_handler(signal, _):
+    """handle registered signals, probably just `SIGTERM`.
+
+    >>> from snapshotbackup import _signal_handler
+    >>> try:
+    ...     _signal_handler('signal', 'frame')
+    ... except SystemExit as e:
+    ...     e.code
+    1
+
+    :exit 1:
+    """
+    _exit(f'got signal {signal}')
 
 
 def _main(configfile, configsection, action, source, progress):  # noqa: C901
@@ -129,7 +171,7 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
     :return: None
     """
     try:
-        config = parse_config(configsection, file=configfile)
+        _config = parse_config(configsection, filepath=configfile)
     except FileNotFoundError as e:
         _exit(f'configuration file `{e.filename}` not found')
     except configparser.NoSectionError as e:
@@ -139,14 +181,16 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
 
     try:
         if action in ['s', 'setup']:
-            setup_path(config['backups'])
+            setup_path(_config['backups'])
         elif action in ['b', 'backup']:
-            make_backup(config['source'] if source is None else source, config['backups'], config['ignore'], progress)
+            make_backup(_config['source'] if source is None else source, _config['backups'], _config['ignore'],
+                        progress)
+            send_notification(__name__, f'backup `{configsection}` finished', notify_remote=_config['notify_remote'])
         elif action in ['l', 'list']:
-            list_backups(config['backups'], config['retain_all_after'], config['retain_daily_after'])
+            list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
         elif action in ['p', 'purge']:
-            purge_backups(config['backups'], config['retain_all_after'], config['retain_daily_after'])
-    except (BackupDirError, LockPathError) as e:
+            purge_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
+    except BackupDirError as e:
         _exit(e)
     except CommandNotFoundError as e:
         _exit(f'command `{e.command}` not found, mayhap missing software?')
@@ -159,25 +203,31 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
 def _parse_args():
     """argument definitions. return parsed args.
 
+    >>> from snapshotbackup import _parse_args
+    >>> try:
+    ...     _parse_args()
+    ... except SystemExit as e:
+    ...     e.code
+    2
+
+    :exit 2: argument error
     :return: :class:`argparse.Namespace`
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
-                        help='setup backup path (`mkdir -p`), make backup, list backups '
-                             'or purge backups not held by retention policy')
-    parser.add_argument('name', help='section name in config file')
-    parser.add_argument('-c', '--config', type=open, metavar='filename', help='use given config file')
-    parser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
-    parser.add_argument('--source', help='use given path as source for backup')
-    parser.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used thrice')
-    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}', help='print version '
-                                                                                                     'number and exit')
-    return parser.parse_args()
-
-
-def _signal_handler(signal, _):
-    """handle registered signals, probably just `SIGTERM`."""
-    _exit(f'got signal {signal}')
+    p = argparse.ArgumentParser()
+    p.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
+                   help='setup backup path (`mkdir -p`), make backup, list backups '
+                        'or purge backups not held by retention policy')
+    p.add_argument('name', help='section name in config file')
+    p.add_argument('-c', '--config', metavar='CONFIGFILE', help='use given config file')
+    p.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used thrice')
+    p.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
+    p.add_argument('-s', '--silent', action='store_true', help='silent mode: log to journald instead of stdout '
+                                                               '(install with extra `journald`, e.g. `pip install '
+                                                               'snapshotbackup[journald]`)')
+    p.add_argument('--source', help='use given path as source for backup')
+    p.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}', help='print version number '
+                                                                                                'and exit')
+    return p.parse_args()
 
 
 def main():
@@ -196,10 +246,12 @@ def main():
     try:
         signal.signal(signal.SIGTERM, _signal_handler)
         args = _parse_args()
-        _init_logger(log_level=args.debug)
-        logger.info(f'backup {args.name} start w/ pid `{os.getpid()}`')
+        _init_logger(log_level=args.debug, silent=args.silent)
+        logger.info(f'start `{args.name}` w/ pid `{os.getpid()}`')
         _main(configfile=args.config, configsection=args.name, action=args.action, source=args.source,
               progress=args.progress)
+    except ModuleNotFoundError as e:
+        _exit(f'dependency for optional feature not found, missing module: {e.name}')
     except KeyboardInterrupt:
         _exit('keyboard interrupt')
     except Exception as e:

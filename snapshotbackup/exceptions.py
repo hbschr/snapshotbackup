@@ -25,7 +25,13 @@ class BackupDirError(Error):
 
 
 class CommandNotFoundError(Error):
-    """127 - command not found"""
+    """127 - command not found
+
+    >>> from snapshotbackup.exceptions import CommandNotFoundError
+    >>> raise CommandNotFoundError('rsync')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.CommandNotFoundError: ...
+    """
     command: str
 
     def __init__(self, command):
@@ -34,6 +40,13 @@ class CommandNotFoundError(Error):
 
 
 class LockedError(Error):
+    """already locked.
+
+    >>> from snapshotbackup.exceptions import LockedError
+    >>> raise LockedError('/path/to/lockfile')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.LockedError: ...
+    """
     lockfile: str
 
     def __init__(self, lockfile):
@@ -41,19 +54,18 @@ class LockedError(Error):
         self.lockfile = lockfile
 
 
-class LockPathError(Error):
-    path: str
-
-    def __init__(self, path):
-        super().__init__(f'cannot create lock, `{path}` not found')
-        self.path = path
-
-
 class TimestampParseError(Error):
+    """wrapper for several timestamp parsing related errors.
+
+    >>> from snapshotbackup.exceptions import TimestampParseError
+    >>> raise TimestampParseError('meaningful mesage', error='original exception')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.TimestampParseError: ...
+    """
     error: Exception
 
     def __init__(self, message, error=None):
-        """wrapper for several timestamp parsing related errors.
+        """
 
         :param str message: string representation of this error
         :param Exception error: error thrown from imported timestamp parser
@@ -63,7 +75,13 @@ class TimestampParseError(Error):
 
 
 class SyncFailedError(Error):
-    """sync interrupted"""
+    """sync interrupted.
+
+    >>> from snapshotbackup.exceptions import SyncFailedError
+    >>> raise SyncFailedError('/path/to/sync target')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.SyncFailedError: ...
+    """
     target: str
 
     def __init__(self, target):

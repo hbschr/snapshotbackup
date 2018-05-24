@@ -9,6 +9,8 @@ script:
   - make doc
   - make -f Makefile.demo test
   - tox
+after_success:
+  - coveralls
 deploy:
   provider: pypi
   user: hbschr

@@ -26,10 +26,13 @@ setup(
     url='https://github.com/hbschr/snapshotbackup',
     install_requires=[
         'dateparser>=0.7.0',
-        'setuptools-scm>=2.0.0',
         'python-dateutil>=2.7.2',
         'pytz>=2018.4',  # needed by `dateparser`
+        'setuptools-scm>=2.0.0',
     ],
+    extras_require={
+        'journald': ['systemd-python>=234'],
+    },
     entry_points={
         'console_scripts': [
             'snapshotbackup=snapshotbackup:main',
