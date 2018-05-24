@@ -14,7 +14,7 @@ from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncF
 from .subprocess import delete_subvolume, rsync, DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
-
+_config = None   # FIXME: make config a proper singleton or find another solution
 logger = logging.getLogger(__name__)
 
 
@@ -138,7 +138,24 @@ def _exit(error_message=None):
         logger.info(f'pid `{os.getpid()}` exit without errors')
         sys.exit()
     logger.error(f'pid `{os.getpid()}` exit with error: {error_message}')
+    send_notification(__name__, f'backup failed with error:\n{error_message}', error=True,
+                      notify_remote=_config['notify_remote'] if _config else None)
     sys.exit(1)
+
+
+def _signal_handler(signal, _):
+    """handle registered signals, probably just `SIGTERM`.
+
+    >>> from snapshotbackup import _signal_handler
+    >>> try:
+    ...     _signal_handler('signal', 'frame')
+    ... except SystemExit as e:
+    ...     e.code
+    1
+
+    :exit 1:
+    """
+    _exit(f'got signal {signal}')
 
 
 def _main(configfile, configsection, action, source, progress):  # noqa: C901
@@ -154,7 +171,7 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
     :return: None
     """
     try:
-        config = parse_config(configsection, filepath=configfile)
+        _config = parse_config(configsection, filepath=configfile)
     except FileNotFoundError as e:
         _exit(f'configuration file `{e.filename}` not found')
     except configparser.NoSectionError as e:
@@ -164,14 +181,15 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
 
     try:
         if action in ['s', 'setup']:
-            setup_path(config['backups'])
+            setup_path(_config['backups'])
         elif action in ['b', 'backup']:
-            make_backup(config['source'] if source is None else source, config['backups'], config['ignore'], progress)
-            send_notification(__name__, f'backup `{configsection}` finished', notify_remote=config['notify_remote'])
+            make_backup(_config['source'] if source is None else source, _config['backups'], _config['ignore'],
+                        progress)
+            send_notification(__name__, f'backup `{configsection}` finished', notify_remote=_config['notify_remote'])
         elif action in ['l', 'list']:
-            list_backups(config['backups'], config['retain_all_after'], config['retain_daily_after'])
+            list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
         elif action in ['p', 'purge']:
-            purge_backups(config['backups'], config['retain_all_after'], config['retain_daily_after'])
+            purge_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
     except BackupDirError as e:
         _exit(e)
     except CommandNotFoundError as e:
@@ -210,21 +228,6 @@ def _parse_args():
     p.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}', help='print version number '
                                                                                                 'and exit')
     return p.parse_args()
-
-
-def _signal_handler(signal, _):
-    """handle registered signals, probably just `SIGTERM`.
-
-    >>> from snapshotbackup import _signal_handler
-    >>> try:
-    ...     _signal_handler('signal', 'frame')
-    ... except SystemExit as e:
-    ...     e.code
-    1
-
-    :exit 1:
-    """
-    _exit(f'got signal {signal}')
 
 
 def main():
