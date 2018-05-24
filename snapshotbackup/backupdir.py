@@ -254,14 +254,13 @@ class Lock(object):
         self._lockfile = os.path.join(self._dir, _sync_lockfile)
 
     def __enter__(self):
-        """enter locked context, create lockfile or throw errors."""
+        """enter locked context: create lockfile or throw error"""
         try:
             open(self._lockfile, 'r').close()
             raise LockedError(self._lockfile)
-        except FileNotFoundError as e:
-            pass
-        open(self._lockfile, 'w').close()
+        except FileNotFoundError:
+            open(self._lockfile, 'w').close()
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        """exit locked context, lockfile will be removed."""
+        """exit locked context: remove lockfile"""
         os.remove(self._lockfile)
