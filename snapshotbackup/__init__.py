@@ -154,7 +154,7 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
     :return: None
     """
     try:
-        config = parse_config(configsection, file=configfile)
+        config = parse_config(configsection, filepath=configfile)
     except FileNotFoundError as e:
         _exit(f'configuration file `{e.filename}` not found')
     except configparser.NoSectionError as e:
@@ -200,7 +200,7 @@ def _parse_args():
                    help='setup backup path (`mkdir -p`), make backup, list backups '
                         'or purge backups not held by retention policy')
     p.add_argument('name', help='section name in config file')
-    p.add_argument('-c', '--config', type=open, metavar='CONFIGFILE', help='use given config file')
+    p.add_argument('-c', '--config', metavar='CONFIGFILE', help='use given config file')
     p.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used thrice')
     p.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
     p.add_argument('-s', '--silent', action='store_true', help='silent mode: log to journald instead of stdout '
