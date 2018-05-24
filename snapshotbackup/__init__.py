@@ -1,11 +1,11 @@
 import argparse
 import configparser
+import importlib
 import logging
 import os
 import signal
 import sys
 from pkg_resources import get_distribution
-from systemd.journal import JournalHandler
 
 from .notify import send_notification
 from .backupdir import BackupDir
@@ -109,7 +109,9 @@ def _init_logger(log_level=0, silent=False):
         level = logging.DEBUG
     else:
         level = DEBUG_SHELL
-    logging.basicConfig(level=level, handlers=[JournalHandler(SYSLOG_IDENTIFIER=__name__)] if silent else None)
+    handlers = [importlib.import_module('systemd.journal').JournalHandler(SYSLOG_IDENTIFIER=__name__)] \
+        if silent else None
+    logging.basicConfig(level=level, handlers=handlers)
 
 
 def _exit(error_message=None):
@@ -201,7 +203,9 @@ def _parse_args():
     p.add_argument('-c', '--config', type=open, metavar='CONFIGFILE', help='use given config file')
     p.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used thrice')
     p.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
-    p.add_argument('-s', '--silent', action='store_true', help='silent mode, log to systemd journal instead of stdout')
+    p.add_argument('-s', '--silent', action='store_true', help='silent mode: log to journald instead of stdout '
+                                                               '(install with extra `journald`, e.g. `pip install '
+                                                               'snapshotbackup[journald]`)')
     p.add_argument('--source', help='use given path as source for backup')
     p.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}', help='print version number '
                                                                                                 'and exit')

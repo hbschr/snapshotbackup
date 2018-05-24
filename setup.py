@@ -29,8 +29,10 @@ setup(
         'python-dateutil>=2.7.2',
         'pytz>=2018.4',  # needed by `dateparser`
         'setuptools-scm>=2.0.0',
-        'systemd-python>=234',
     ],
+    extras_require={
+        'journald': ['systemd-python>=234'],
+    },
     entry_points={
         'console_scripts': [
             'snapshotbackup=snapshotbackup:main',
