@@ -1,10 +1,9 @@
-import argparse
 import configparser
 import importlib
 import logging
 import os
-import signal
 import sys
+from csboilerplate import cli_app
 from pkg_resources import get_distribution
 
 from .notify import send_notification
@@ -89,31 +88,6 @@ def setup_path(path):
     os.makedirs(path, exist_ok=True)
 
 
-def _init_logger(log_level=0, silent=False):
-    """increase log level.
-
-    >>> from snapshotbackup import _init_logger
-    >>> _init_logger(0)
-    >>> _init_logger(1)
-    >>> _init_logger(2)
-    >>> _init_logger(3)
-
-    :param int log_level: `0` - warning, `1` - info, `2` - debug, `3` - debug w/ shell output
-    :return: None
-    """
-    if log_level == 0:
-        level = logging.WARNING
-    elif log_level == 1:
-        level = logging.INFO
-    elif log_level == 2:
-        level = logging.DEBUG
-    else:
-        level = DEBUG_SHELL
-    handlers = [importlib.import_module('systemd.journal').JournalHandler(SYSLOG_IDENTIFIER=__name__)] \
-        if silent else None
-    logging.basicConfig(level=level, handlers=handlers)
-
-
 def _exit(error_message=None):
     """log and exit.
 
@@ -143,35 +117,22 @@ def _exit(error_message=None):
     sys.exit(1)
 
 
-def _signal_handler(signal, _):
-    """handle registered signals, probably just `SIGTERM`.
-
-    >>> from snapshotbackup import _signal_handler
-    >>> try:
-    ...     _signal_handler('signal', 'frame')
-    ... except SystemExit as e:
-    ...     e.code
-    1
-
-    :exit 1:
-    """
-    _exit(f'got signal {signal}')
-
-
-def _main(configfile, configsection, action, source, progress):  # noqa: C901
-    """perform given action on given config/configsection.
-    expected errors are logged.
-
-    :param configfile:
-    :param str configsection:
-    :param str action:
-    :param str source:
-    :param bool progress:
-    :exit 1: in case of error
-    :return: None
-    """
+@cli_app(name=__name__, exit_handler=_exit)  # noqa: C901
+def main(app):
     try:
-        _config = parse_config(configsection, filepath=configfile)
+        handlers = [importlib.import_module('systemd.journal').JournalHandler(SYSLOG_IDENTIFIER=app.name)] \
+            if app.args.silent else None
+        app.logging_config(log_level=app.args.debug, handlers=handlers,
+                           log_levels=[logging.WARNING, logging.INFO, logging.DEBUG, DEBUG_SHELL])
+    except ModuleNotFoundError as e:
+        _exit(f'dependency for optional feature not found, missing module: {e.name}')
+    except IndexError:
+        _exit('debugging doesn\'t go that far, remove one `-d`')
+    logger.info(f'start `{app.args.name}` w/ pid `{os.getpid()}`')
+
+    configsection = app.args.name
+    try:
+        _config = parse_config(configsection, filepath=app.args.config)
     except FileNotFoundError as e:
         _exit(f'configuration file `{e.filename}` not found')
     except configparser.NoSectionError as e:
@@ -180,15 +141,14 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
         _exit(e)
 
     try:
-        if action in ['s', 'setup']:
+        if app.args.action in ['s', 'setup']:
             setup_path(_config['backups'])
-        elif action in ['b', 'backup']:
-            make_backup(_config['source'] if source is None else source, _config['backups'], _config['ignore'],
-                        progress)
+        elif app.args.action in ['b', 'backup']:
+            make_backup(app.args.source or _config['source'], _config['backups'], _config['ignore'], app.args.progress)
             send_notification(__name__, f'backup `{configsection}` finished', notify_remote=_config['notify_remote'])
-        elif action in ['l', 'list']:
+        elif app.args.action in ['l', 'list']:
             list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
-        elif action in ['p', 'purge']:
+        elif app.args.action in ['p', 'purge']:
             purge_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
     except BackupDirError as e:
         _exit(e)
@@ -200,61 +160,17 @@ def _main(configfile, configsection, action, source, progress):  # noqa: C901
         _exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
 
 
-def _parse_args():
-    """argument definitions. return parsed args.
-
-    >>> from snapshotbackup import _parse_args
-    >>> try:
-    ...     _parse_args()
-    ... except SystemExit as e:
-    ...     e.code
-    2
-
-    :exit 2: argument error
-    :return: :class:`argparse.Namespace`
-    """
-    p = argparse.ArgumentParser()
-    p.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
-                   help='setup backup path (`mkdir -p`), make backup, list backups '
-                        'or purge backups not held by retention policy')
-    p.add_argument('name', help='section name in config file')
-    p.add_argument('-c', '--config', metavar='CONFIGFILE', help='use given config file')
-    p.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used thrice')
-    p.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
-    p.add_argument('-s', '--silent', action='store_true', help='silent mode: log to journald instead of stdout '
-                                                               '(install with extra `journald`, e.g. `pip install '
-                                                               'snapshotbackup[journald]`)')
-    p.add_argument('--source', help='use given path as source for backup')
-    p.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}', help='print version number '
-                                                                                                'and exit')
-    return p.parse_args()
-
-
-def main():
-    """command line entry point.
-
-    - parse arguments
-    - init logger
-    - call `_main`
-    - handle `SIGTERM` and `KeyboardInterrupt`
-    - log unhandled exceptions
-
-    :exit 0: success
-    :exit 1: interruption
-    :exit 2: argument error
-    """
-    try:
-        signal.signal(signal.SIGTERM, _signal_handler)
-        args = _parse_args()
-        _init_logger(log_level=args.debug, silent=args.silent)
-        logger.info(f'start `{args.name}` w/ pid `{os.getpid()}`')
-        _main(configfile=args.config, configsection=args.name, action=args.action, source=args.source,
-              progress=args.progress)
-    except ModuleNotFoundError as e:
-        _exit(f'dependency for optional feature not found, missing module: {e.name}')
-    except KeyboardInterrupt:
-        _exit('keyboard interrupt')
-    except Exception as e:
-        logger.exception(e)
-        _exit('uncaught exception')
-    _exit()
+main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
+                            help='setup backup path (`mkdir -p`), make backup, list backups '
+                            'or purge backups not held by retention policy')
+main.argparser.add_argument('name', help='section name in config file')
+main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', help='use given config file')
+main.argparser.add_argument('-d', '--debug', action='count', default=0,
+                            help='lower logging threshold, may be used thrice')
+main.argparser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
+main.argparser.add_argument('-s', '--silent', action='store_true',
+                            help='silent mode: log to journald instead of stdout (install with extra `journald`, e.g. '
+                                 '`pip install snapshotbackup[journald]`)')
+main.argparser.add_argument('--source', help='use given path as source for backup')
+main.argparser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
+                            help='print version number and exit')
