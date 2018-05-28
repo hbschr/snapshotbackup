@@ -13,7 +13,6 @@ from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncF
 from .subprocess import delete_subvolume, rsync, DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
-_config = None   # FIXME: make config a proper singleton or find another solution
 logger = logging.getLogger(__name__)
 
 
@@ -88,19 +87,22 @@ def setup_path(path):
     os.makedirs(path, exist_ok=True)
 
 
-def _exit(error_message=None):
+def _exit(app, error_message=None):
     """log and exit.
 
+    >>> from unittest.mock import Mock
     >>> from snapshotbackup import _exit
-    >>> _exit()
+    >>> app = Mock()
+    >>> app.config = {'notify_remote': None}
+    >>> _exit(app)
     Traceback (most recent call last):
     SystemExit
     >>> try:
-    ...     _exit()
+    ...     _exit(app)
     ... except SystemExit as e:
     ...     assert e.code is None
     >>> try:
-    ...     _exit('xxx')
+    ...     _exit(app, 'xxx')
     ... except SystemExit as e:
     ...     assert e.code == 1
 
@@ -111,9 +113,9 @@ def _exit(error_message=None):
     if error_message is None:
         logger.info(f'pid `{os.getpid()}` exit without errors')
         sys.exit()
-    logger.error(f'pid `{os.getpid()}` exit with error: {error_message}')
     send_notification(__name__, f'backup failed with error:\n{error_message}', error=True,
-                      notify_remote=_config['notify_remote'] if _config else None)
+                      notify_remote=app.config['notify_remote'])
+    logger.error(f'pid `{os.getpid()}` exit with error: {error_message}')
     sys.exit(1)
 
 
@@ -125,21 +127,22 @@ def main(app):
         app.logging_config(log_level=app.args.debug, handlers=handlers,
                            log_levels=[logging.WARNING, logging.INFO, logging.DEBUG, DEBUG_SHELL])
     except ModuleNotFoundError as e:
-        _exit(f'dependency for optional feature not found, missing module: {e.name}')
+        app.exit(f'dependency for optional feature not found, missing module: {e.name}')
     except IndexError:
-        _exit('debugging doesn\'t go that far, remove one `-d`')
+        app.exit('debugging doesn\'t go that far, remove one `-d`')
     logger.info(f'start `{app.args.name}` w/ pid `{os.getpid()}`')
 
     configsection = app.args.name
     try:
-        _config = parse_config(configsection, filepath=app.args.config)
+        app.config = parse_config(configsection, filepath=app.args.config)
     except FileNotFoundError as e:
-        _exit(f'configuration file `{e.filename}` not found')
+        app.exit(f'configuration file `{e.filename}` not found')
     except configparser.NoSectionError as e:
-        _exit(f'no configuration for `{e.section}` found')
+        app.exit(f'no configuration for `{e.section}` found')
     except TimestampParseError as e:
-        _exit(e)
+        app.exit(e)
 
+    _config = app.config
     try:
         if app.args.action in ['s', 'setup']:
             setup_path(_config['backups'])
@@ -151,13 +154,13 @@ def main(app):
         elif app.args.action in ['p', 'purge']:
             purge_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
     except BackupDirError as e:
-        _exit(e)
+        app.exit(e)
     except CommandNotFoundError as e:
-        _exit(f'command `{e.command}` not found, mayhap missing software?')
+        app.exit(f'command `{e.command}` not found, mayhap missing software?')
     except LockedError as e:
-        _exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
+        app.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
     except SyncFailedError as e:
-        _exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
+        app.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
 
 
 main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],

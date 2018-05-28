@@ -25,7 +25,7 @@ setup(
     packages=('snapshotbackup',),
     url='https://github.com/hbschr/snapshotbackup',
     install_requires=[
-        'csboilerplate>=0.0.3',
+        'csboilerplate==0.0.4',
         'dateparser>=0.7.0',
         'python-dateutil>=2.7.2',
         'pytz>=2018.4',  # needed by `dateparser`
