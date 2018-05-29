@@ -77,8 +77,8 @@ dev env
 ```commandline
 virtualenv .env -p python3
 . .env/bin/activate
-pip install -r requirements.txt     # or requirements_journald.txt
-pip install -e .
+pip install -r requirements.txt
+pip install -e .                    # or pip install -e .[journald]
 ```
 
 
