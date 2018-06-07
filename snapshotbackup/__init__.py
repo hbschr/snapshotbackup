@@ -176,8 +176,8 @@ main.argparser.add_argument('-d', '--debug', action='count', default=0,
                             help='lower logging threshold, may be used thrice')
 main.argparser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
 main.argparser.add_argument('-s', '--silent', action='store_true',
-                            help='silent mode: log to journald instead of stdout (install with extra `journald`, e.g. '
-                                 '`pip install snapshotbackup[journald]`)')
-main.argparser.add_argument('--source', help='use given path as source for backup')
+                            help='silent mode: log errors, warnings and `--debug` to journald instead of stdout '
+                                 '(extra dependencies needed, install with `pip install snapshotbackup[journald]`)')
+main.argparser.add_argument('--source', help='use given path as source for backup, replaces `source` from config file')
 main.argparser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
                             help='print version number and exit')
