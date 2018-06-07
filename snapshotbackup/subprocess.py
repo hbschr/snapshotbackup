@@ -63,7 +63,9 @@ def rsync(source, target, exclude='', progress=False):
     """
     logger.info(f'sync `{source}` to `{target}`')
     try:
-        run('rsync', '-azv', '--delete', f'--exclude={exclude}', f'{source}/', target, show_output=progress)
+        run('rsync', '--human-readable', '--itemize-changes', '--stats',
+            '-azv', '--inplace', '--delete', '--delete-excluded', f'--exclude={exclude}',
+            f'{source}/', target, show_output=progress)
         btrfs_sync(target)
     except subprocess.CalledProcessError as e:
         logger.debug(f'raise `SyncFailedError` after catching `{e}`')
