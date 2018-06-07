@@ -10,6 +10,9 @@ opts    :=
 help:
 	@echo 'no user-friendly help here, please consult `demo/Makefile` and `demo/config.ini` and have fun!'
 
+sleep:
+	sleep 1s
+
 setup:
 	mkdir -p $(mnt_dir)
 	fallocate -l $(isosize) $(isofile)
@@ -19,6 +22,9 @@ setup:
 
 backup:
 	$(script) $(opts) -c $(config) backup demo
+
+backup-checksum:
+	$(script) $(opts) -c $(config) backup demo --checksum
 
 list:
 	$(script) $(opts) -c $(config) list demo
@@ -35,4 +41,4 @@ clean:
 version:
 	snapshotbackup -v
 
-test: version setup backup list purge clean
+test: version setup backup sleep backup-checksum list purge clean

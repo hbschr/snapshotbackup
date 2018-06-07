@@ -38,6 +38,7 @@ def run(*args, show_output=False):
     snapshotbackup.exceptions.CommandNotFoundError: ...
     """
     logger.log(DEBUG_SHELL, f'run {args}, show_output={show_output}')
+    args = tuple(_a for _a in args if _a is not None)
     try:
         if show_output:
             subprocess.run(args, check=True)
@@ -51,7 +52,7 @@ def run(*args, show_output=False):
         raise CommandNotFoundError(e.filename) from e
 
 
-def rsync(source, target, exclude='', progress=False):
+def rsync(source, target, exclude='', checksum=False, progress=False):
     """run `rsync` for given `source` and `target`.
 
     :param str source: path to read from
@@ -62,10 +63,11 @@ def rsync(source, target, exclude='', progress=False):
     :return: None
     """
     logger.info(f'sync `{source}` to `{target}`')
-    try:
-        run('rsync', '--human-readable', '--itemize-changes', '--stats',
+    args = ['rsync', '--human-readable', '--itemize-changes', '--stats', '--checksum' if checksum else None,
             '-azv', '--inplace', '--delete', '--delete-excluded', f'--exclude={exclude}',
-            f'{source}/', target, show_output=progress)
+            f'{source}/', target]
+    try:
+        run(*args, show_output=progress)
         btrfs_sync(target)
     except subprocess.CalledProcessError as e:
         logger.debug(f'raise `SyncFailedError` after catching `{e}`')
@@ -104,7 +106,7 @@ def make_snapshot(source, target, readonly=True):
     """
     logger.info(f'create snapshot `{target}`')
     args = 'btrfs', 'subvolume', 'snapshot', '-r' if readonly else None, source, target
-    run(*[_a for _a in args if _a is not None])
+    run(*args)
     btrfs_sync(target)
 
 

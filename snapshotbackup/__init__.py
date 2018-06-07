@@ -16,7 +16,7 @@ __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
 
 
-def make_backup(source_dir, backup_dir, ignore, progress):
+def make_backup(source_dir, backup_dir, ignore, progress, checksum):
     """make a backup for given configuration.
 
     :param str source_dir:
@@ -28,7 +28,7 @@ def make_backup(source_dir, backup_dir, ignore, progress):
     logger.info(f'make backup, source_dir={source_dir}, backup_dir={backup_dir}, ignore={ignore}, progress={progress}')
     vol = BackupDir(backup_dir, assert_syncdir=True)
     with vol.lock():
-        rsync(source_dir, vol.sync_path, exclude=ignore, progress=progress)
+        rsync(source_dir, vol.sync_path, exclude=ignore, checksum=checksum, progress=progress)
         vol.snapshot_sync()
 
 
@@ -147,8 +147,9 @@ def main(app):
         if app.args.action in ['s', 'setup']:
             setup_path(_config['backups'])
         elif app.args.action in ['b', 'backup']:
-            make_backup(app.args.source or _config['source'], _config['backups'], _config['ignore'], app.args.progress)
-            send_notification(__name__, f'backup `{configsection}` finished', notify_remote=_config['notify_remote'])
+            make_backup(app.args.source or _config['source'], _config['backups'], _config['ignore'], app.args.progress,
+                        app.args.checksum)
+            send_notification(app.name, f'backup `{configsection}` finished', notify_remote=_config['notify_remote'])
         elif app.args.action in ['l', 'list']:
             list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
         elif app.args.action in ['p', 'purge']:
@@ -165,9 +166,12 @@ def main(app):
 
 main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
                             help='setup backup path (`mkdir -p`), make backup, list backups '
-                            'or purge backups not held by retention policy')
+                                 'or purge backups not held by retention policy')
 main.argparser.add_argument('name', help='section name in config file')
 main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', help='use given config file')
+main.argparser.add_argument('--checksum', action='store_true',
+                            help='detect changes by checksum instead of file size and modification time, '
+                                 'increases disk load significantly (triggers `rsync --checksum`)')
 main.argparser.add_argument('-d', '--debug', action='count', default=0,
                             help='lower logging threshold, may be used thrice')
 main.argparser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
