@@ -99,9 +99,9 @@ class BackupDir(object):
         backups = []
         for backup in reversed(dirs):
             if len(backups) == 0:
-                backups.insert(0, Backup(backup, self, retain_all_after, retain_daily_after))
+                backups.insert(0, Backup(backup, self.path, retain_all_after, retain_daily_after))
             else:
-                backups.insert(0, Backup(backup, self, retain_all_after, retain_daily_after, next=backups[
+                backups.insert(0, Backup(backup, self.path, retain_all_after, retain_daily_after, next=backups[
                     0]))
         return backups
 
@@ -111,14 +111,13 @@ class Backup(object):
 
     >>> from datetime import datetime
     >>> from snapshotbackup.backupdir import Backup
-    >>> mock_vol = type('BackupDir', (object,), {'path': '/tmp'})
     >>> retain_all = datetime(1970, 3, 1)
     >>> retain_daily = datetime(1970, 2, 1)
-    >>> b4 = Backup('1970-04-02', mock_vol, retain_all, retain_daily)
-    >>> b3 = Backup('1970-03-02', mock_vol, retain_all, retain_daily, next=b4)
-    >>> b2 = Backup('1970-02-02', mock_vol, retain_all, retain_daily, next=b3)
-    >>> b1 = Backup('1970-01-02', mock_vol, retain_all, retain_daily, next=b2)
-    >>> b0 = Backup('1970-01-01', mock_vol, retain_all, retain_daily, next=b1)
+    >>> b4 = Backup('1970-04-02', '/tmp', retain_all, retain_daily)
+    >>> b3 = Backup('1970-03-02', '/tmp', retain_all, retain_daily, next=b4)
+    >>> b2 = Backup('1970-02-02', '/tmp', retain_all, retain_daily, next=b3)
+    >>> b1 = Backup('1970-01-02', '/tmp', retain_all, retain_daily, next=b2)
+    >>> b0 = Backup('1970-01-01', '/tmp', retain_all, retain_daily, next=b1)
     >>> b0.purge
     True
     >>> b0.is_weekly
@@ -171,11 +170,11 @@ class Backup(object):
     purge: bool = False
     """if this backup should be purged by retention policy"""
 
-    def __init__(self, name, vol, retain_all_after, retain_daily_after, next=None):
+    def __init__(self, name, basedir, retain_all_after, retain_daily_after, next=None):
         """initialize a backup object.
 
         :param str name: name of this backup, also an iso timestamp
-        :param BackupDir vol: backup directory this backup lives in
+        :param str basedir: backup directory this backup lives in
         :param datetime.datetime retain_all: backup will not be purged if it is after this timestamp
         :param datetime.datetime retain_daily: backup will not be purged if it is after this timestamp and a daily
         :param Backup next: successive backup object
@@ -183,8 +182,7 @@ class Backup(object):
         """
         self.name = name
         self.datetime = parse_timestamp(name)
-        self.vol = vol
-        self.path = os.path.join(self.vol.path, self.name)
+        self.path = os.path.join(basedir, self.name)
         self.is_inside_retain_all_interval = self._is_after_or_equal(retain_all_after)
         self.is_inside_retain_daily_interval = self._is_after_or_equal(retain_daily_after)
         if not next:
