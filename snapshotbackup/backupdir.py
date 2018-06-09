@@ -97,12 +97,10 @@ class BackupDir(object):
 
         dirs.sort()
         backups = []
-        for backup in reversed(dirs):
-            if len(backups) == 0:
-                backups.insert(0, Backup(backup, self.path, retain_all_after, retain_daily_after))
-            else:
-                backups.insert(0, Backup(backup, self.path, retain_all_after, retain_daily_after, next=backups[
-                    0]))
+        for _index, _dir in enumerate(dirs):
+            previous = backups[len(backups) - 1] if len(backups) > 0 else None
+            backups.append(Backup(_dir, self.path, retain_all_after, retain_daily_after, previous=previous,
+                                  is_last=_index == len(dirs)))
         return backups
 
 
@@ -113,23 +111,23 @@ class Backup(object):
     >>> from snapshotbackup.backupdir import Backup
     >>> retain_all = datetime(1970, 3, 1)
     >>> retain_daily = datetime(1970, 2, 1)
-    >>> b4 = Backup('1970-04-02', '/tmp', retain_all, retain_daily)
-    >>> b3 = Backup('1970-03-02', '/tmp', retain_all, retain_daily, next=b4)
-    >>> b2 = Backup('1970-02-02', '/tmp', retain_all, retain_daily, next=b3)
-    >>> b1 = Backup('1970-01-02', '/tmp', retain_all, retain_daily, next=b2)
-    >>> b0 = Backup('1970-01-01', '/tmp', retain_all, retain_daily, next=b1)
+    >>> b0 = Backup('1970-01-01', '/tmp', retain_all, retain_daily)
+    >>> b1 = Backup('1970-01-02', '/tmp', retain_all, retain_daily, previous=b0)
+    >>> b2 = Backup('1970-02-02', '/tmp', retain_all, retain_daily, previous=b1)
+    >>> b3 = Backup('1970-03-02', '/tmp', retain_all, retain_daily, previous=b2)
+    >>> b4 = Backup('1970-04-02', '/tmp', retain_all, retain_daily, previous=b3, is_last = True)
     >>> b0.is_last or b1.is_last or b2.is_last or b3.is_last
     False
     >>> b4.is_last
     True
     >>> b0.purge
-    True
+    False
     >>> b0.is_weekly
-    False
-    >>> b1.purge
-    False
-    >>> b1.is_weekly
     True
+    >>> b1.purge
+    True
+    >>> b1.is_weekly
+    False
     >>> b2.purge
     False
     >>> b2.is_daily
@@ -174,7 +172,7 @@ class Backup(object):
     purge: bool = False
     """if this backup should be purged by retention policy"""
 
-    def __init__(self, name, basedir, retain_all_after, retain_daily_after, next=None):
+    def __init__(self, name, basedir, retain_all_after, retain_daily_after, previous=None, is_last=False):
         """initialize a backup object.
 
         :param str name: name of this backup, also an iso timestamp
@@ -189,12 +187,14 @@ class Backup(object):
         self.path = os.path.join(basedir, self.name)
         self.is_inside_retain_all_interval = self._is_after_or_equal(retain_all_after)
         self.is_inside_retain_daily_interval = self._is_after_or_equal(retain_daily_after)
-        if not next:
-            self.is_last = True
+        self.is_last = is_last
+        if not previous:
+            self.is_daily = True
+            self.is_weekly = True
         else:
-            self.is_daily = not is_same_day(self.datetime, next.datetime)
-            self.is_weekly = not is_same_week(self.datetime, next.datetime)
-            self.purge = not self._retain()
+            self.is_daily = not is_same_day(previous.datetime, self.datetime)
+            self.is_weekly = not is_same_week(previous.datetime, self.datetime)
+        self.purge = not self._retain()
 
     def _is_after_or_equal(self, timestamp):
         """check if this backup completed after given timestamp.
@@ -209,6 +209,8 @@ class Backup(object):
 
         :return bool:
         """
+        if self.is_last:
+            return True
         if self.is_inside_retain_all_interval:
             return True
         if self.is_inside_retain_daily_interval:
