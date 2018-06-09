@@ -1,6 +1,7 @@
 import os
 import pytest
 import tempfile
+from datetime import datetime
 from unittest.mock import patch
 
 import snapshotbackup.backupdir
@@ -105,3 +106,12 @@ def test_backupdir_snapshot(mock_make_snapshot, _, __):
         vol = snapshotbackup.backupdir.BackupDir(path, assert_syncdir=True)
         vol.snapshot_sync()
     mock_make_snapshot.assert_called_once()
+
+
+@patch('snapshotbackup.backupdir.delete_subvolume')
+def test_backup_delete(mocked_delete_subvolume):
+    retain_all = datetime(1970, 3, 1)
+    retain_daily = datetime(1970, 2, 1)
+    backup = snapshotbackup.backupdir.Backup('1970-01-01', '/tmp', retain_all, retain_daily)
+    backup.delete()
+    mocked_delete_subvolume.assert_called_once()

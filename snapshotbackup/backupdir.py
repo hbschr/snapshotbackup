@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 from .exceptions import BackupDirError, LockedError
-from .subprocess import create_subvolume, is_btrfs, make_snapshot
+from .subprocess import create_subvolume, delete_subvolume, is_btrfs, make_snapshot
 from .timestamps import earliest_time, get_timestamp, is_same_day, is_same_week, is_timestamp, parse_timestamp
 
 _sync_dir = '.sync'
@@ -217,6 +217,10 @@ class Backup(object):
         if self.is_inside_retain_daily_interval:
             return self.is_daily
         return self.is_weekly
+
+    def delete(self):
+        """delete this backup"""
+        delete_subvolume(self.path)
 
 
 class Lock(object):

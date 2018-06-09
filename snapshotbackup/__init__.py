@@ -10,7 +10,7 @@ from .notify import send_notification
 from .backupdir import BackupDir
 from .config import parse_config
 from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncFailedError, TimestampParseError
-from .subprocess import delete_subvolume, rsync, DEBUG_SHELL
+from .subprocess import rsync, DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
@@ -71,9 +71,9 @@ def prune_backups(backup_dir, retain_all_after, retain_daily_after):
                 f'retain_daily_after={retain_daily_after}')
     vol = BackupDir(backup_dir)
     backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after)
-    for prune in [_b for _b in backups if _b.prune]:
-        print(f'prune {prune.name}')
-        delete_subvolume(prune.path)
+    for to_be_pruned in [_b for _b in backups if _b.prune]:
+        print(f'prune {to_be_pruned.name}')
+        to_be_pruned.delete()
 
 
 def setup_path(path):
