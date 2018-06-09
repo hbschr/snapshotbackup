@@ -49,10 +49,10 @@ def list_backups(backup_dir, retain_all_after, retain_daily_after):
         print(f'{backup.name}'
               f'\t{"retain_all" if retain_all else "retain_daily" if retain_daily else "        "}'
               f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
-              f'\t{"purge candidate" if backup.purge else ""}')
+              f'\t{"prune candidate" if backup.prune else ""}')
 
 
-def purge_backups(backup_dir, retain_all_after, retain_daily_after):
+def prune_backups(backup_dir, retain_all_after, retain_daily_after):
     """delete all backups for given configuration which are not held by retention policy.
 
     :param str backup_dir:
@@ -60,13 +60,13 @@ def purge_backups(backup_dir, retain_all_after, retain_daily_after):
     :param datetime.datetime retain_daily_after:
     :return: None
     """
-    logger.info(f'purge backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
+    logger.info(f'prune backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
                 f'retain_daily_after={retain_daily_after}')
     vol = BackupDir(backup_dir)
     backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after)
-    for purge in [_b for _b in backups if _b.purge]:
-        print(f'purge {purge.name}')
-        delete_subvolume(purge.path)
+    for prune in [_b for _b in backups if _b.prune]:
+        print(f'prune {prune.name}')
+        delete_subvolume(prune.path)
 
 
 def setup_path(path):
@@ -152,8 +152,8 @@ def main(app):
             send_notification(app.name, f'backup `{configsection}` finished', notify_remote=_config['notify_remote'])
         elif app.args.action in ['l', 'list']:
             list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
-        elif app.args.action in ['p', 'purge']:
-            purge_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
+        elif app.args.action in ['p', 'prune']:
+            prune_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
     except BackupDirError as e:
         app.exit(e)
     except CommandNotFoundError as e:
@@ -164,9 +164,9 @@ def main(app):
         app.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state')
 
 
-main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'purge', 'p'],
+main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p'],
                             help='setup backup path (`mkdir -p`), make backup, list backups '
-                                 'or purge backups not held by retention policy')
+                                 'or prune backups not held by retention policy')
 main.argparser.add_argument('name', help='section name in config file')
 main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', help='use given config file')
 main.argparser.add_argument('--checksum', action='store_true',

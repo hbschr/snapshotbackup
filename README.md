@@ -47,11 +47,11 @@ the setup-step can be skipped if configured backup directory already exists.
 snapshotbackup setup data1
 snapshotbackup backup data1
 snapshotbackup list data1
-snapshotbackup purge data1
+snapshotbackup prune data1
 ```
 
 
-purge retention policy
+prune retention policy
 --
 
 - all backups not older than `retain_all`
@@ -94,7 +94,7 @@ it creates a `btrfs` image file and mounts it as loopback device.
 make -f Makefile.demo setup
 make -f Makefile.demo backup
 make -f Makefile.demo list
-make -f Makefile.demo purge
+make -f Makefile.demo prune
 make -f Makefile.demo clean
 ```
 

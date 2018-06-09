@@ -121,21 +121,21 @@ class Backup(object):
     False
     >>> b4.is_last
     True
-    >>> b0.purge
+    >>> b0.prune
     False
     >>> b0.is_weekly
     True
-    >>> b1.purge
+    >>> b1.prune
     True
     >>> b1.is_weekly
     False
-    >>> b2.purge
+    >>> b2.prune
     False
     >>> b2.is_daily
     True
     >>> b2.is_inside_retain_daily_interval
     True
-    >>> b3.purge
+    >>> b3.prune
     False
     >>> b3.is_daily
     True
@@ -170,16 +170,16 @@ class Backup(object):
     is_inside_retain_daily_interval: bool
     """if this backup is inside the `retain_daily` time interval"""
 
-    purge: bool = False
-    """if this backup should be purged by retention policy"""
+    prune: bool = False
+    """if this backup should be pruned by retention policy"""
 
     def __init__(self, name, basedir, retain_all_after, retain_daily_after, previous=None, is_last=False):
         """initialize a backup object.
 
         :param str name: name of this backup, also an iso timestamp
         :param str basedir: backup directory this backup lives in
-        :param datetime.datetime retain_all: backup will not be purged if it is after this timestamp
-        :param datetime.datetime retain_daily: backup will not be purged if it is after this timestamp and a daily
+        :param datetime.datetime retain_all: backup will not be pruned if it is after this timestamp
+        :param datetime.datetime retain_daily: backup will not be pruned if it is after this timestamp and a daily
         :param Backup next: successive backup object
         :raise TimestampParseError: when `name` is not valid iso string
         """
@@ -195,7 +195,7 @@ class Backup(object):
         else:
             self.is_daily = not is_same_day(previous.datetime, self.datetime)
             self.is_weekly = not is_same_week(previous.datetime, self.datetime)
-        self.purge = not self._retain()
+        self.prune = not self._retain()
 
     def _is_after_or_equal(self, timestamp):
         """check if this backup completed after given timestamp.
