@@ -118,6 +118,10 @@ class Backup(object):
     >>> b2 = Backup('1970-02-02', '/tmp', retain_all, retain_daily, next=b3)
     >>> b1 = Backup('1970-01-02', '/tmp', retain_all, retain_daily, next=b2)
     >>> b0 = Backup('1970-01-01', '/tmp', retain_all, retain_daily, next=b1)
+    >>> b0.is_last or b1.is_last or b2.is_last or b3.is_last
+    False
+    >>> b4.is_last
+    True
     >>> b0.purge
     True
     >>> b0.is_weekly
