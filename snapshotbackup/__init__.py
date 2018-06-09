@@ -16,20 +16,27 @@ __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
 
 
-def make_backup(source_dir, backup_dir, ignore, progress, checksum):
+def make_backup(source_dir, backup_dir, ignore, progress=False, checksum=False, dry_run=False):
     """make a backup for given configuration.
 
     :param str source_dir:
     :param str backup_dir:
     :param str ignore:
     :param bool progress:
+    :param bool checksum:
+    :param bool dry_run:
     :return: None
     """
     logger.info(f'make backup, source_dir={source_dir}, backup_dir={backup_dir}, ignore={ignore}, progress={progress}')
     vol = BackupDir(backup_dir, assert_syncdir=True)
     with vol.lock():
-        rsync(source_dir, vol.sync_path, exclude=ignore, checksum=checksum, progress=progress)
-        vol.snapshot_sync()
+        if dry_run:
+            print(f'dry run, no changes will be made on disk, this is what rsync would do:')
+        rsync(source_dir, vol.sync_path, exclude=ignore, checksum=checksum, progress=progress, dry_run=dry_run)
+        if dry_run:
+            print(f'dry run, no changes were made on disk')
+        else:
+            vol.snapshot_sync()
 
 
 def list_backups(backup_dir, retain_all_after, retain_daily_after):
@@ -132,9 +139,8 @@ def main(app):
         app.exit('debugging doesn\'t go that far, remove one `-d`')
     logger.info(f'start `{app.args.name}` w/ pid `{os.getpid()}`')
 
-    configsection = app.args.name
     try:
-        app.config = parse_config(configsection, filepath=app.args.config)
+        app.config = parse_config(app.args.name, filepath=app.args.config)
     except FileNotFoundError as e:
         app.exit(f'configuration file `{e.filename}` not found')
     except configparser.NoSectionError as e:
@@ -147,9 +153,11 @@ def main(app):
         if app.args.action in ['s', 'setup']:
             setup_path(_config['backups'])
         elif app.args.action in ['b', 'backup']:
-            make_backup(app.args.source or _config['source'], _config['backups'], _config['ignore'], app.args.progress,
-                        app.args.checksum)
-            send_notification(app.name, f'backup `{configsection}` finished', notify_remote=_config['notify_remote'])
+            make_backup(app.args.source or _config['source'], _config['backups'], _config['ignore'],
+                        progress=app.args.progress, checksum=app.args.checksum, dry_run=app.args.dry_run)
+            if not app.args.dry_run:
+                send_notification(app.name, f'backup `{app.args.name}` finished',
+                                  notify_remote=_config['notify_remote'])
         elif app.args.action in ['l', 'list']:
             list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
         elif app.args.action in ['p', 'prune']:
@@ -169,15 +177,17 @@ main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'lis
                                  'or prune backups not held by retention policy')
 main.argparser.add_argument('name', help='section name in config file')
 main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', help='use given config file')
-main.argparser.add_argument('--checksum', action='store_true',
-                            help='detect changes by checksum instead of file size and modification time, '
-                                 'increases disk load significantly (triggers `rsync --checksum`)')
 main.argparser.add_argument('-d', '--debug', action='count', default=0,
                             help='lower logging threshold, may be used thrice')
 main.argparser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
 main.argparser.add_argument('-s', '--silent', action='store_true',
                             help='silent mode: log errors, warnings and `--debug` to journald instead of stdout '
                                  '(extra dependencies needed, install with `pip install snapshotbackup[journald]`)')
+main.argparser.add_argument('--checksum', action='store_true',
+                            help='detect changes by checksum instead of file size and modification time, '
+                                 'increases disk load significantly (triggers `rsync --checksum`)')
+main.argparser.add_argument('--dry-run', action='store_true',
+                            help='pass `--dry-run` to rsync and display rsync output, no changes are made on disk')
 main.argparser.add_argument('--source', help='use given path as source for backup, replaces `source` from config file')
 main.argparser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
                             help='print version number and exit')

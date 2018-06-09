@@ -52,7 +52,7 @@ def run(*args, show_output=False):
         raise CommandNotFoundError(e.filename) from e
 
 
-def rsync(source, target, exclude='', checksum=False, progress=False):
+def rsync(source, target, exclude='', checksum=False, progress=False, dry_run=False):
     """run `rsync` for given `source` and `target`.
 
     :param str source: path to read from
@@ -63,11 +63,11 @@ def rsync(source, target, exclude='', checksum=False, progress=False):
     :return: None
     """
     logger.info(f'sync `{source}` to `{target}`')
-    args = ['rsync', '--human-readable', '--itemize-changes', '--stats', '--checksum' if checksum else None,
+    args = ['rsync', '--human-readable', '--itemize-changes', '--stats',
             '-azv', '--inplace', '--delete', '--delete-excluded', f'--exclude={exclude}',
-            f'{source}/', target]
+            f'{source}/', target, '--checksum' if checksum else None, '--dry-run' if dry_run else None]
     try:
-        run(*args, show_output=progress)
+        run(*args, show_output=progress or dry_run)
         btrfs_sync(target)
     except subprocess.CalledProcessError as e:
         logger.debug(f'raise `SyncFailedError` after catching `{e}`')
