@@ -91,8 +91,9 @@ class BackupDir(object):
         :return: list of backups in this backup directory
         :rtype: [snapshotbackup.backup.Backup]
         """
-        for root, dirs, files in os.walk(self.path):
-            dirs = [dir for dir in dirs if is_timestamp(dir)]
+        dirs = []
+        for _root, _dirs, _files in os.walk(self.path):
+            dirs = [_dir for _dir in _dirs if is_timestamp(_dir)]
             break
 
         dirs.sort()

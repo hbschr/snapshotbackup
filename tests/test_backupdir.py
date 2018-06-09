@@ -64,6 +64,28 @@ def test_backupdir_recover_sync_from_latest(mock_make_snapshot, mock_create_subv
 
 
 @patch('snapshotbackup.backupdir.is_btrfs', return_value=True)
+def test_get_backups(_):
+    with tempfile.TemporaryDirectory() as path:
+        vol = snapshotbackup.backupdir.BackupDir(path)
+        os.mkdir(os.path.join(path, snapshotbackup.backupdir._sync_dir))
+        assert len(vol.get_backups()) == 0
+        os.mkdir(os.path.join(path, '1989-11-10T00+00'))
+        assert len(vol.get_backups()) == 1
+        os.mkdir(os.path.join(path, '1989-11-09T00+00'))
+        assert len(vol.get_backups()) == 2
+
+
+@patch('snapshotbackup.backupdir.is_btrfs', return_value=True)
+@patch('os.path.isdir', return_value=True)
+def test_get_backups_missing_branch(_, __):
+    """when `os.walk` doesn't iterate, can't happen since i checked `isdir` in constructor, but branch coverage
+    complains"""
+    with tempfile.TemporaryDirectory() as path:
+        vol = snapshotbackup.backupdir.BackupDir(os.path.join(path, 'nope'))
+        assert len(vol.get_backups()) == 0
+
+
+@patch('snapshotbackup.backupdir.is_btrfs', return_value=True)
 @patch('snapshotbackup.backupdir.create_subvolume')
 @patch('snapshotbackup.backupdir.make_snapshot')
 def test_backupdir_lock(_, __, ___):
