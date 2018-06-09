@@ -64,7 +64,7 @@ def test_backupdir_recover_sync_from_latest(mock_make_snapshot, mock_create_subv
 
 
 @patch('snapshotbackup.backupdir.is_btrfs', return_value=True)
-def test_get_backups(_):
+def test_backupdir_get_backups(_):
     with tempfile.TemporaryDirectory() as path:
         vol = snapshotbackup.backupdir.BackupDir(path)
         os.mkdir(os.path.join(path, snapshotbackup.backupdir._sync_dir))
@@ -77,7 +77,7 @@ def test_get_backups(_):
 
 @patch('snapshotbackup.backupdir.is_btrfs', return_value=True)
 @patch('os.path.isdir', return_value=True)
-def test_get_backups_missing_branch(_, __):
+def test_backupdir_get_backups_missing_branch(_, __):
     """when `os.walk` doesn't iterate, can't happen since i checked `isdir` in constructor, but branch coverage
     complains"""
     with tempfile.TemporaryDirectory() as path:
