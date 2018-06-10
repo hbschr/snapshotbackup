@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 from .exceptions import BackupDirError, LockedError
-from .subprocess import create_subvolume, is_btrfs, make_snapshot
+from .subprocess import create_subvolume, delete_subvolume, is_btrfs, make_snapshot
 from .timestamps import earliest_time, get_timestamp, is_same_day, is_same_week, is_timestamp, parse_timestamp
 
 _sync_dir = '.sync'
@@ -91,18 +91,17 @@ class BackupDir(object):
         :return: list of backups in this backup directory
         :rtype: [snapshotbackup.backup.Backup]
         """
-        for root, dirs, files in os.walk(self.path):
-            dirs = [dir for dir in dirs if is_timestamp(dir)]
+        dirs = []
+        for _root, _dirs, _files in os.walk(self.path):
+            dirs = [_dir for _dir in _dirs if is_timestamp(_dir)]
             break
 
         dirs.sort()
         backups = []
-        for backup in reversed(dirs):
-            if len(backups) == 0:
-                backups.insert(0, Backup(backup, self, retain_all_after, retain_daily_after))
-            else:
-                backups.insert(0, Backup(backup, self, retain_all_after, retain_daily_after, next=backups[
-                    0]))
+        for _index, _dir in enumerate(dirs):
+            previous = backups[len(backups) - 1] if len(backups) > 0 else None
+            backups.append(Backup(_dir, self.path, retain_all_after, retain_daily_after, previous=previous,
+                                  is_last=_index == len(dirs)))
         return backups
 
 
@@ -111,29 +110,32 @@ class Backup(object):
 
     >>> from datetime import datetime
     >>> from snapshotbackup.backupdir import Backup
-    >>> mock_vol = type('BackupDir', (object,), {'path': '/tmp'})
     >>> retain_all = datetime(1970, 3, 1)
     >>> retain_daily = datetime(1970, 2, 1)
-    >>> b4 = Backup('1970-04-02', mock_vol, retain_all, retain_daily)
-    >>> b3 = Backup('1970-03-02', mock_vol, retain_all, retain_daily, next=b4)
-    >>> b2 = Backup('1970-02-02', mock_vol, retain_all, retain_daily, next=b3)
-    >>> b1 = Backup('1970-01-02', mock_vol, retain_all, retain_daily, next=b2)
-    >>> b0 = Backup('1970-01-01', mock_vol, retain_all, retain_daily, next=b1)
-    >>> b0.purge
+    >>> b0 = Backup('1970-01-01', '/tmp', retain_all, retain_daily)
+    >>> b1 = Backup('1970-01-02', '/tmp', retain_all, retain_daily, previous=b0)
+    >>> b2 = Backup('1970-02-02', '/tmp', retain_all, retain_daily, previous=b1)
+    >>> b3 = Backup('1970-03-02', '/tmp', retain_all, retain_daily, previous=b2)
+    >>> b4 = Backup('1970-04-02', '/tmp', retain_all, retain_daily, previous=b3, is_last = True)
+    >>> b0.is_last or b1.is_last or b2.is_last or b3.is_last
+    False
+    >>> b4.is_last
     True
+    >>> b0.prune
+    False
     >>> b0.is_weekly
-    False
-    >>> b1.purge
-    False
-    >>> b1.is_weekly
     True
-    >>> b2.purge
+    >>> b1.prune
+    True
+    >>> b1.is_weekly
+    False
+    >>> b2.prune
     False
     >>> b2.is_daily
     True
     >>> b2.is_inside_retain_daily_interval
     True
-    >>> b3.purge
+    >>> b3.prune
     False
     >>> b3.is_daily
     True
@@ -168,31 +170,32 @@ class Backup(object):
     is_inside_retain_daily_interval: bool
     """if this backup is inside the `retain_daily` time interval"""
 
-    purge: bool = False
-    """if this backup should be purged by retention policy"""
+    prune: bool = False
+    """if this backup should be pruned by retention policy"""
 
-    def __init__(self, name, vol, retain_all_after, retain_daily_after, next=None):
+    def __init__(self, name, basedir, retain_all_after, retain_daily_after, previous=None, is_last=False):
         """initialize a backup object.
 
         :param str name: name of this backup, also an iso timestamp
-        :param BackupDir vol: backup directory this backup lives in
-        :param datetime.datetime retain_all: backup will not be purged if it is after this timestamp
-        :param datetime.datetime retain_daily: backup will not be purged if it is after this timestamp and a daily
+        :param str basedir: backup directory this backup lives in
+        :param datetime.datetime retain_all: backup will not be pruned if it is after this timestamp
+        :param datetime.datetime retain_daily: backup will not be pruned if it is after this timestamp and a daily
         :param Backup next: successive backup object
         :raise TimestampParseError: when `name` is not valid iso string
         """
         self.name = name
         self.datetime = parse_timestamp(name)
-        self.vol = vol
-        self.path = os.path.join(self.vol.path, self.name)
+        self.path = os.path.join(basedir, self.name)
         self.is_inside_retain_all_interval = self._is_after_or_equal(retain_all_after)
         self.is_inside_retain_daily_interval = self._is_after_or_equal(retain_daily_after)
-        if not next:
-            self.is_last = True
+        self.is_last = is_last
+        if not previous:
+            self.is_daily = True
+            self.is_weekly = True
         else:
-            self.is_daily = not is_same_day(self.datetime, next.datetime)
-            self.is_weekly = not is_same_week(self.datetime, next.datetime)
-            self.purge = not self._retain()
+            self.is_daily = not is_same_day(previous.datetime, self.datetime)
+            self.is_weekly = not is_same_week(previous.datetime, self.datetime)
+        self.prune = not self._retain()
 
     def _is_after_or_equal(self, timestamp):
         """check if this backup completed after given timestamp.
@@ -207,11 +210,17 @@ class Backup(object):
 
         :return bool:
         """
+        if self.is_last:
+            return True
         if self.is_inside_retain_all_interval:
             return True
         if self.is_inside_retain_daily_interval:
             return self.is_daily
         return self.is_weekly
+
+    def delete(self):
+        """delete this backup"""
+        delete_subvolume(self.path)
 
 
 class Lock(object):
