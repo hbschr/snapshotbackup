@@ -100,6 +100,8 @@ def _exit(app, error_message=None):
     >>> from unittest.mock import Mock
     >>> from snapshotbackup import _exit
     >>> app = Mock()
+    >>> app.name = 'application_name'
+    >>> app.args.name = 'backup_name'
     >>> app.config = {'notify_remote': None}
     >>> _exit(app)
     Traceback (most recent call last):
@@ -118,11 +120,11 @@ def _exit(app, error_message=None):
     :exit 1: error
     """
     if error_message is None:
-        logger.info(f'pid `{os.getpid()}` exit without errors')
+        logger.info(f'`{app.args.name}` exit without errors')
         sys.exit()
-    send_notification(__name__, f'backup failed with error:\n{error_message}', error=True,
+    send_notification(app.name, f'backup `{app.args.name}` failed with error:\n{error_message}', error=True,
                       notify_remote=app.config['notify_remote'])
-    logger.error(f'pid `{os.getpid()}` exit with error: {error_message}')
+    logger.error(f'`{app.args.name}` exit with error: {error_message}')
     sys.exit(1)
 
 
