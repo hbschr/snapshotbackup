@@ -64,7 +64,7 @@ def rsync(source, target, exclude='', checksum=False, progress=False, dry_run=Fa
     """
     logger.info(f'sync `{source}` to `{target}`')
     args = ['rsync', '--human-readable', '--itemize-changes', '--stats',
-            '-azv', '--inplace', '--delete', '--delete-excluded', f'--exclude={exclude}',
+            '-azv', '--sparse', '--delete', '--delete-excluded', f'--exclude={exclude}',
             f'{source}/', target, '--checksum' if checksum else None, '--dry-run' if dry_run else None]
     try:
         run(*args, show_output=progress or dry_run)
