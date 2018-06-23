@@ -1,7 +1,7 @@
 doc: apidoc doctest
 	sphinx-build -b html doc doc/build
 
-doctest:
+doctest: apidoc
 	sphinx-build -b doctest doc doc/doctest
 
 apidoc:

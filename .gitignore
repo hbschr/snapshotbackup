@@ -1,6 +1,8 @@
-# editors and ides
+# workbench
 *~
 /.idea
+/sandbox
+/doc/Makefile
 
 # git & tools
 *.orig
