@@ -71,7 +71,7 @@ def rsync(source, target, exclude='', checksum=False, progress=False, dry_run=Fa
         btrfs_sync(target)
     except subprocess.CalledProcessError as e:
         logger.debug(f'raise `SyncFailedError` after catching `{e}`')
-        raise SyncFailedError(target) from e
+        raise SyncFailedError(target, e.returncode) from e
 
 
 def create_subvolume(path):

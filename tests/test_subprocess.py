@@ -48,10 +48,12 @@ def test_rsync_success(_):
     assert subprocess.run.call_count == 2
 
 
-@patch('subprocess.run', side_effect=subprocess.CalledProcessError(1, 'command'))
+@patch('subprocess.run', side_effect=subprocess.CalledProcessError(42, 'command'))
 def test_rsync_interrupted(_):
-    with pytest.raises(snapshotbackup.exceptions.SyncFailedError):
+    with pytest.raises(snapshotbackup.exceptions.SyncFailedError) as excinfo:
         snapshotbackup.subprocess.rsync('source', 'target')
+    assert excinfo.value.target == 'target'
+    assert excinfo.value.errno == 42
     subprocess.run.assert_called_once()
 
 
