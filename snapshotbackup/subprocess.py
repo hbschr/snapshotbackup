@@ -2,7 +2,7 @@ import logging
 import os
 import subprocess
 
-from .exceptions import CommandNotFoundError, SyncFailedError
+from .exceptions import BtrfsSyncError, CommandNotFoundError, SyncFailedError
 
 DEBUG_SHELL = 5
 """custom logging level for subprocess output"""
@@ -125,6 +125,10 @@ def is_btrfs(path):
 def btrfs_sync(path):
     """force a sync of the filesystem at path. that's like a btrfs-aware `sync`.
 
+    :raise BtrfsSyncError: when sync failed
     :return: None
     """
-    run('btrfs', 'filesystem', 'sync', path)
+    try:
+        run('btrfs', 'filesystem', 'sync', path)
+    except subprocess.CalledProcessError as e:
+        raise BtrfsSyncError(path) from e

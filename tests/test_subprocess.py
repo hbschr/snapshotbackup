@@ -99,3 +99,11 @@ def test_is_not_btrfs(_):
 def test_btrfs_sync(_):
     snapshotbackup.subprocess.btrfs_sync('path')
     subprocess.run.assert_called_once()
+
+
+@patch('subprocess.run', side_effect=subprocess.CalledProcessError(1, 'command'))
+def test_btrfs_sync_failed(_):
+    with pytest.raises(snapshotbackup.exceptions.BtrfsSyncError) as excinfo:
+        snapshotbackup.subprocess.btrfs_sync('path')
+    assert excinfo.value.path == 'path'
+    subprocess.run.assert_called_once()
