@@ -78,12 +78,29 @@ class SyncFailedError(Error):
     """sync interrupted.
 
     >>> from snapshotbackup.exceptions import SyncFailedError
-    >>> raise SyncFailedError('/path/to/sync target')
+    >>> raise SyncFailedError('/path/to/sync_target', 42)
     Traceback (most recent call last):
     snapshotbackup.exceptions.SyncFailedError: ...
     """
     target: str
+    errno: int
 
-    def __init__(self, target):
-        super().__init__(f'Sync interrupted: `{target}`')
+    def __init__(self, target, errno):
+        super().__init__(f'Sync interrupted: `{target}`, errno `{errno}`')
         self.target = target
+        self.errno = errno
+
+
+class BtrfsSyncError(Error):
+    """`btrfs filesystem sync` failed.
+
+    >>> from snapshotbackup.exceptions import BtrfsSyncError
+    >>> raise BtrfsSyncError('/path/to/sync_target')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.BtrfsSyncError: ...
+    """
+    path: str
+
+    def __init__(self, path):
+        super().__init__(f'`btrfs filesystem sync` failed on `{path}`')
+        self.path = path
