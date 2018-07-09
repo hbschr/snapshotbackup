@@ -24,6 +24,18 @@ class BackupDirError(Error):
         self.path = path
 
 
+class BackupDirNotFoundError(BackupDirError):
+    """backup dir does not exist.
+
+    >>> from snapshotbackup.exceptions import BackupDirNotFoundError
+    >>> raise BackupDirNotFoundError('/test')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.BackupDirNotFoundError: ...
+    """
+    def __init__(self, path):
+        super().__init__(f'not found {path}', path)
+
+
 class CommandNotFoundError(Error):
     """127 - command not found
 

@@ -9,7 +9,8 @@ from pkg_resources import get_distribution
 from .notify import send_notification
 from .backupdir import BackupDir
 from .config import parse_config
-from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncFailedError, TimestampParseError
+from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, LockedError, SyncFailedError, \
+    TimestampParseError
 from .subprocess import rsync, DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
@@ -164,6 +165,8 @@ def main(app):
             list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
         elif app.args.action in ['p', 'prune']:
             prune_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
+    except BackupDirNotFoundError as e:
+        app.exit(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
     except BackupDirError as e:
         app.exit(e)
     except CommandNotFoundError as e:
