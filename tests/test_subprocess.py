@@ -1,6 +1,8 @@
+import os
 import pytest
-from unittest.mock import patch
 import subprocess
+import tempfile
+from unittest.mock import patch
 
 import snapshotbackup.subprocess
 
@@ -42,9 +44,36 @@ def test_run_not_silent(_):
     assert 'stderr' not in kwargs
 
 
+def test_is_reachable():
+    with tempfile.TemporaryDirectory() as path:
+        snapshotbackup.subprocess.is_reachable(path)
+
+
+@patch('snapshotbackup.subprocess.run')
+def test_is_reachable_ssh(mocked_run):
+    snapshotbackup.subprocess.is_reachable('user@host:path')
+    mocked_run.assert_called_once()
+    assert mocked_run.call_args[0][0] == 'ssh'
+    assert mocked_run.call_args[0][1] == 'user@host'
+
+
+def test_is_reachable_error():
+    with tempfile.TemporaryDirectory() as basepath:
+        path = os.path.join(basepath, 'nope')
+        with pytest.raises(snapshotbackup.exceptions.SourceNotReachableError) as excinfo:
+            snapshotbackup.subprocess.is_reachable(path)
+        assert excinfo.value.path == path
+
+
 @patch('subprocess.run')
 def test_rsync_success(_):
     snapshotbackup.subprocess.rsync('source', 'target')
+    assert subprocess.run.call_count == 2
+
+
+@patch('subprocess.run')
+def test_create_subvolume(_):
+    snapshotbackup.subprocess.create_subvolume('path')
     assert subprocess.run.call_count == 2
 
 
@@ -55,12 +84,6 @@ def test_rsync_interrupted(_):
     assert excinfo.value.target == 'target'
     assert excinfo.value.errno == 42
     subprocess.run.assert_called_once()
-
-
-@patch('subprocess.run')
-def test_create_subvolume(_):
-    snapshotbackup.subprocess.create_subvolume('path')
-    assert subprocess.run.call_count == 2
 
 
 @patch('subprocess.run')

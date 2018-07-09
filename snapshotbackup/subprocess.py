@@ -2,7 +2,7 @@ import logging
 import os
 import subprocess
 
-from .exceptions import BtrfsSyncError, CommandNotFoundError, SyncFailedError
+from .exceptions import BtrfsSyncError, CommandNotFoundError, SourceNotReachableError, SyncFailedError
 
 DEBUG_SHELL = 5
 """custom logging level for subprocess output"""
@@ -50,6 +50,23 @@ def run(*args, show_output=False):
     except FileNotFoundError as e:
         logger.debug(f'raise `CommandNotFoundError` after catching `{e}`')
         raise CommandNotFoundError(e.filename) from e
+
+
+def is_reachable(path):
+    """test if `path` can be reached.
+
+    :param path: can be a local or remote path
+    :return: bool
+    """
+    args = []
+    if '@' in path:
+        host, path = path.split(':', 1)
+        args = ['ssh', host]
+    args.extend(['ls', path])
+    try:
+        run(*args)
+    except subprocess.CalledProcessError:
+        raise SourceNotReachableError(path)
 
 
 def rsync(source, target, exclude='', checksum=False, progress=False, dry_run=False):

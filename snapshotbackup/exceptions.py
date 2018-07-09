@@ -86,6 +86,21 @@ class TimestampParseError(Error):
         self.error = error
 
 
+class SourceNotReachableError(Error):
+    """source directory not reachable
+
+    >>> from snapshotbackup.exceptions import SourceNotReachableError
+    >>> raise SourceNotReachableError('/path/to/source')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.SourceNotReachableError: ...
+    """
+    path: str
+
+    def __init__(self, path):
+        super().__init__(f'source not reachable {path}')
+        self.path = path
+
+
 class SyncFailedError(Error):
     """sync interrupted.
 
