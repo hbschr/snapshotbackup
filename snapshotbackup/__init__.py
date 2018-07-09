@@ -184,7 +184,8 @@ main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'lis
                             help='setup backup path (`mkdir -p`), make backup, list backups '
                                  'or prune backups not held by retention policy')
 main.argparser.add_argument('name', help='section name in config file')
-main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', help='use given config file')
+main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
+                            help='use given config file')
 main.argparser.add_argument('-d', '--debug', action='count', default=0,
                             help='lower logging threshold, may be used thrice')
 main.argparser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
