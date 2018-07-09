@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-from .exceptions import BackupDirError, LockedError
+from .exceptions import BackupDirError, BackupDirNotFoundError, LockedError
 from .subprocess import create_subvolume, delete_subvolume, is_btrfs, make_snapshot
 from .timestamps import earliest_time, get_timestamp, is_same_day, is_same_week, is_timestamp, parse_timestamp
 
@@ -20,6 +20,12 @@ class BackupDir(object):
     >>> from snapshotbackup.backupdir import BackupDir
     >>> with tempfile.TemporaryDirectory() as path:
     ...     BackupDir(os.path.join(path, 'nope'))
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.BackupDirNotFoundError: ...
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     not_a_dir = os.path.join(path, 'file')
+    ...     open(not_a_dir, 'w').close()
+    ...     BackupDir(not_a_dir)
     Traceback (most recent call last):
     snapshotbackup.exceptions.BackupDirError: not a directory ...
     >>> with tempfile.TemporaryDirectory() as path:
@@ -47,10 +53,14 @@ class BackupDir(object):
         :param str dir:
         :param bool assert_syncdir: if true syncdir will be checked and created if needed, also checks `writable`
         :param bool assert_writable bool: if true write access for current process will be checked
-        :raise BackupDirError: error with meaningful message
+        :raise BackupDirNotFoundError: backup dir not found
+        :raise BackupDirError: general error with meaningful message
         """
         self.path = os.path.abspath(dir)
         self.sync_path = os.path.join(self.path, _sync_dir)
+
+        if not os.path.exists(self.path):
+            raise BackupDirNotFoundError(self.path)
 
         if not os.path.isdir(self.path):
             raise BackupDirError(f'not a directory {self.path}', self.path)

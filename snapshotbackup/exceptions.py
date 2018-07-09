@@ -24,6 +24,18 @@ class BackupDirError(Error):
         self.path = path
 
 
+class BackupDirNotFoundError(BackupDirError):
+    """backup dir does not exist.
+
+    >>> from snapshotbackup.exceptions import BackupDirNotFoundError
+    >>> raise BackupDirNotFoundError('/test')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.BackupDirNotFoundError: ...
+    """
+    def __init__(self, path):
+        super().__init__(f'not found {path}', path)
+
+
 class CommandNotFoundError(Error):
     """127 - command not found
 
@@ -72,6 +84,21 @@ class TimestampParseError(Error):
         """
         super().__init__(message)
         self.error = error
+
+
+class SourceNotReachableError(Error):
+    """source directory not reachable
+
+    >>> from snapshotbackup.exceptions import SourceNotReachableError
+    >>> raise SourceNotReachableError('/path/to/source')
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.SourceNotReachableError: ...
+    """
+    path: str
+
+    def __init__(self, path):
+        super().__init__(f'source not reachable {path}')
+        self.path = path
 
 
 class SyncFailedError(Error):

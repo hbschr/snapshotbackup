@@ -78,7 +78,8 @@ def test_backupdir_get_backups(_):
 
 @patch('snapshotbackup.backupdir.is_btrfs', return_value=True)
 @patch('os.path.isdir', return_value=True)
-def test_backupdir_get_backups_missing_branch(_, __):
+@patch('os.path.exists', return_value=True)
+def test_backupdir_get_backups_missing_branch(_, __, ___):
     """when `os.walk` doesn't iterate, can't happen since i checked `isdir` in constructor, but branch coverage
     complains"""
     with tempfile.TemporaryDirectory() as path:

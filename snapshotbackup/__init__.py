@@ -9,8 +9,9 @@ from pkg_resources import get_distribution
 from .notify import send_notification
 from .backupdir import BackupDir
 from .config import parse_config
-from .exceptions import BackupDirError, CommandNotFoundError, LockedError, SyncFailedError, TimestampParseError
-from .subprocess import rsync, DEBUG_SHELL
+from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, LockedError, \
+    SourceNotReachableError, SyncFailedError, TimestampParseError
+from .subprocess import is_reachable, rsync, DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ def make_backup(source_dir, backup_dir, ignore, progress=False, checksum=False, 
     :return: None
     """
     logger.info(f'make backup, source_dir={source_dir}, backup_dir={backup_dir}, ignore={ignore}, progress={progress}')
+    is_reachable(source_dir)
     vol = BackupDir(backup_dir, assert_syncdir=True)
     with vol.lock():
         if dry_run:
@@ -123,7 +125,7 @@ def _exit(app, error_message=None):
         logger.info(f'`{app.args.name}` exit without errors')
         sys.exit()
     send_notification(app.name, f'backup `{app.args.name}` failed with error:\n{error_message}', error=True,
-                      notify_remote=app.config['notify_remote'])
+                      notify_remote=app.config['notify_remote'] if hasattr(app, 'config') else False)
     logger.error(f'`{app.args.name}` exit with error: {error_message}')
     sys.exit(1)
 
@@ -164,6 +166,10 @@ def main(app):
             list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
         elif app.args.action in ['p', 'prune']:
             prune_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
+    except SourceNotReachableError as e:
+        app.exit(f'source dir `{e.path}` not found, is it mounted?')
+    except BackupDirNotFoundError as e:
+        app.exit(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
     except BackupDirError as e:
         app.exit(e)
     except CommandNotFoundError as e:
