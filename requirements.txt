@@ -31,7 +31,7 @@ pytest-cov==2.5.1
 pytest-mccabe==0.1
 python-dateutil==2.7.2
 pytz==2018.4
-PyYAML==3.12
+PyYAML==3.13
 regex==2018.2.21
 requests==2.18.4
 setuptools-scm==2.0.0
