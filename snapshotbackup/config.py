@@ -4,17 +4,15 @@ import configparser
 from .timestamps import parse_human_readable_relative_dates
 
 
-_default_filepath = '/etc/snapshotbackup.ini'
-
 _defaults = {
     'retain_all': '1 day',
     'retain_daily': '1 month',
     'ignore': '',
-    'notify_remote': None,
+    'notify_remote': '',
 }
 
 
-def parse_config(section, filepath=None):
+def parse_config(section, filepath):
     """parse ini file and return dictionary for given section
 
     :param str section: section in ini file to use
@@ -24,7 +22,7 @@ def parse_config(section, filepath=None):
     :raise configparser.NoSectionError: when given `section` is not found
     """
     config = configparser.ConfigParser(defaults=_defaults)
-    config.read(filepath or _default_filepath)
+    config.read(filepath)
     if not config.has_section(section):
         raise configparser.NoSectionError(section)
     return {
@@ -33,5 +31,5 @@ def parse_config(section, filepath=None):
         'ignore': config[section]['ignore'],
         'retain_all_after': parse_human_readable_relative_dates(config[section]['retain_all']),
         'retain_daily_after': parse_human_readable_relative_dates(config[section]['retain_daily']),
-        'notify_remote': config[section]['notify_remote'],
+        'notify_remote': config[section]['notify_remote'] or None,
     }
