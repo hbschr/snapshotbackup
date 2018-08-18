@@ -8,7 +8,7 @@ _defaults = {
     'retain_all': '1 day',
     'retain_daily': '1 month',
     'ignore': '',
-    'notify_remote': None,
+    'notify_remote': '',
 }
 
 
@@ -31,5 +31,5 @@ def parse_config(section, filepath):
         'ignore': config[section]['ignore'],
         'retain_all_after': parse_human_readable_relative_dates(config[section]['retain_all']),
         'retain_daily_after': parse_human_readable_relative_dates(config[section]['retain_daily']),
-        'notify_remote': config[section]['notify_remote'],
+        'notify_remote': config[section]['notify_remote'] or None,
     }
