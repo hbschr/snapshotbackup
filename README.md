@@ -93,15 +93,15 @@ it creates a `btrfs` image file and mounts it as loopback device.
 *DISCLAIMER*: i'm not sure if btrfs loopback files are safe in every environment. use at your own risk.
 
 ```commandline
-make -f Makefile.demo setup
-make -f Makefile.demo backup
-make -f Makefile.demo list
-make -f Makefile.demo prune
-make -f Makefile.demo decay
-make -f Makefile.demo clean
+make -f makefile.demo setup
+make -f makefile.demo backup
+make -f makefile.demo list
+make -f makefile.demo prune
+make -f makefile.demo decay
+make -f makefile.demo clean
 ```
 
-please read `Makefile.demo` and `demo/config.ini` to understand what's happening.
+please read `makefile.demo` and `demo/config.ini` to understand what's happening.
 
 
 build

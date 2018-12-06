@@ -7,7 +7,7 @@ install:
 script:
   - make check
   - make doc
-  - make -f Makefile.demo test
+  - make -f makefile.demo test
   - tox
 after_success:
   - coveralls
