@@ -177,7 +177,8 @@ def main(app):
     except LockedError as e:
         app.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
     except SyncFailedError as e:
-        app.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state (error number {e.errno})')
+        app.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
+                 f'(rsync error {e.errno}, {e.error_message})')
 
 
 main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p'],
