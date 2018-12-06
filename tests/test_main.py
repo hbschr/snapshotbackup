@@ -33,7 +33,7 @@ def test_list_backups():
     mocked_backupdir_instance = MagicMock()
     mocked_backupdir_instance.get_backups.return_value = [MagicMock(), MagicMock()]
     with patch('snapshotbackup.BackupDir', return_value=mocked_backupdir_instance):
-        snapshotbackup.list_backups('dir', 'retain_all_after', 'retain_daily_after')
+        snapshotbackup.list_backups('dir', 'retain_all_after', 'retain_daily_after', 'decay_before')
         mocked_backupdir_instance.get_backups.assert_called_once()
 
 
@@ -45,7 +45,21 @@ def test_prune_backups():
     mocked_backup_instance_new.prune = False
     mocked_backupdir_instance.get_backups.return_value = [mocked_backup_instance_old, mocked_backup_instance_new]
     with patch('snapshotbackup.BackupDir', return_value=mocked_backupdir_instance):
-        snapshotbackup.prune_backups('dir', 'retain_all_after', 'retain_daily_after')
+        snapshotbackup.prune_backups('dir', 'retain_all_after', 'retain_daily_after', 'decay_before')
+        mocked_backupdir_instance.get_backups.assert_called_once()
+        mocked_backup_instance_old.delete.assert_called_once()
+        mocked_backup_instance_new.delete.assert_not_called()
+
+
+def test_decay_backups():
+    mocked_backupdir_instance = MagicMock()
+    mocked_backup_instance_old = MagicMock()
+    mocked_backup_instance_old.decay = True
+    mocked_backup_instance_new = MagicMock()
+    mocked_backup_instance_new.decay = False
+    mocked_backupdir_instance.get_backups.return_value = [mocked_backup_instance_old, mocked_backup_instance_new]
+    with patch('snapshotbackup.BackupDir', return_value=mocked_backupdir_instance):
+        snapshotbackup.decay_backups('dir', 'retain_all_after', 'retain_daily_after', 'decay_before')
         mocked_backupdir_instance.get_backups.assert_called_once()
         mocked_backup_instance_old.delete.assert_called_once()
         mocked_backup_instance_new.delete.assert_not_called()

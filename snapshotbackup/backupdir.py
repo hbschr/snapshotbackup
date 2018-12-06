@@ -93,7 +93,7 @@ class BackupDir(object):
         target_path = os.path.join(self.path, get_timestamp().isoformat())
         make_snapshot(self.sync_path, target_path)
 
-    def get_backups(self, retain_all_after=earliest_time, retain_daily_after=earliest_time):
+    def get_backups(self, retain_all_after=earliest_time, retain_daily_after=earliest_time, decay_before=earliest_time):
         """create list of all backups in this backup dir.
 
         :param datetime.datetime retain_all_after:
@@ -110,8 +110,8 @@ class BackupDir(object):
         backups = []
         for _index, _dir in enumerate(dirs):
             previous = backups[len(backups) - 1] if len(backups) > 0 else None
-            backups.append(Backup(_dir, self.path, retain_all_after, retain_daily_after, previous=previous,
-                                  is_last=_index == len(dirs)))
+            backups.append(Backup(_dir, self.path, retain_all_after, retain_daily_after, decay_before,
+                                  previous=previous, is_last=_index == len(dirs)))
         return backups
 
 
@@ -122,11 +122,12 @@ class Backup(object):
     >>> from snapshotbackup.backupdir import Backup
     >>> retain_all = datetime(1970, 3, 1)
     >>> retain_daily = datetime(1970, 2, 1)
-    >>> b0 = Backup('1970-01-01', '/tmp', retain_all, retain_daily)
-    >>> b1 = Backup('1970-01-02', '/tmp', retain_all, retain_daily, previous=b0)
-    >>> b2 = Backup('1970-02-02', '/tmp', retain_all, retain_daily, previous=b1)
-    >>> b3 = Backup('1970-03-02', '/tmp', retain_all, retain_daily, previous=b2)
-    >>> b4 = Backup('1970-04-02', '/tmp', retain_all, retain_daily, previous=b3, is_last = True)
+    >>> decay = datetime(1970, 1, 1, 1)
+    >>> b0 = Backup('1970-01-01', '/tmp', retain_all, retain_daily, decay)
+    >>> b1 = Backup('1970-01-02', '/tmp', retain_all, retain_daily, decay, previous=b0)
+    >>> b2 = Backup('1970-02-02', '/tmp', retain_all, retain_daily, decay, previous=b1)
+    >>> b3 = Backup('1970-03-02', '/tmp', retain_all, retain_daily, decay, previous=b2)
+    >>> b4 = Backup('1970-04-02', '/tmp', retain_all, retain_daily, decay, previous=b3, is_last = True)
     >>> b0.is_last or b1.is_last or b2.is_last or b3.is_last
     False
     >>> b4.is_last
@@ -151,6 +152,10 @@ class Backup(object):
     True
     >>> b3.is_inside_retain_all_interval
     True
+    >>> b0.decay
+    True
+    >>> b1.decay or b2.decay or b3.decay or b4.decay
+    False
     """
 
     name: str
@@ -180,10 +185,13 @@ class Backup(object):
     is_inside_retain_daily_interval: bool
     """if this backup is inside the `retain_daily` time interval"""
 
+    decay: bool = False
+    """if this backup may decay"""
+
     prune: bool = False
     """if this backup should be pruned by retention policy"""
 
-    def __init__(self, name, basedir, retain_all_after, retain_daily_after, previous=None, is_last=False):
+    def __init__(self, name, basedir, retain_all_after, retain_daily_after, decay_before, previous=None, is_last=False):
         """initialize a backup object.
 
         :param str name: name of this backup, also an iso timestamp
@@ -196,6 +204,7 @@ class Backup(object):
         self.name = name
         self.datetime = parse_timestamp(name)
         self.path = os.path.join(basedir, self.name)
+        self.decay = self._is_before(decay_before)
         self.is_inside_retain_all_interval = self._is_after_or_equal(retain_all_after)
         self.is_inside_retain_daily_interval = self._is_after_or_equal(retain_daily_after)
         self.is_last = is_last
@@ -206,6 +215,14 @@ class Backup(object):
             self.is_daily = not is_same_day(previous.datetime, self.datetime)
             self.is_weekly = not is_same_week(previous.datetime, self.datetime)
         self.prune = not self._retain()
+
+    def _is_before(self, timestamp):
+        """check if this backup completed before given timestamp.
+
+        :param datetime.datetime timestamp:
+        :return bool:
+        """
+        return timestamp > self.datetime
 
     def _is_after_or_equal(self, timestamp):
         """check if this backup completed after given timestamp.

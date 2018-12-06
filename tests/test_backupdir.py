@@ -113,6 +113,7 @@ def test_backupdir_snapshot(mock_make_snapshot, _, __):
 def test_backup_delete(mocked_delete_subvolume):
     retain_all = datetime(1970, 3, 1)
     retain_daily = datetime(1970, 2, 1)
-    backup = snapshotbackup.backupdir.Backup('1970-01-01', '/tmp', retain_all, retain_daily)
+    decay = datetime(1970, 1, 1)
+    backup = snapshotbackup.backupdir.Backup('1970-01-01', '/tmp', retain_all, retain_daily, decay)
     backup.delete()
     mocked_delete_subvolume.assert_called_once()

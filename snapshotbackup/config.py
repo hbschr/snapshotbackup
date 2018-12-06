@@ -7,6 +7,7 @@ from .timestamps import parse_human_readable_relative_dates
 _defaults = {
     'retain_all': '1 day',
     'retain_daily': '1 month',
+    'decay': '1 year',
     'ignore': '',
     'notify_remote': '',
 }
@@ -31,5 +32,6 @@ def parse_config(section, filepath):
         'ignore': config[section]['ignore'],
         'retain_all_after': parse_human_readable_relative_dates(config[section]['retain_all']),
         'retain_daily_after': parse_human_readable_relative_dates(config[section]['retain_daily']),
+        'decay_before': parse_human_readable_relative_dates(config[section]['decay']),
         'notify_remote': config[section]['notify_remote'] or None,
     }

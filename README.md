@@ -24,6 +24,7 @@ example `config.ini`
 [DEFAULT]
 ; retain_all = '1 day'
 ; retain_daily = '1 month'
+; decay = '1 year'
 
 [data1]
 source = /path/to/data1
@@ -48,19 +49,20 @@ snapshotbackup setup data1
 snapshotbackup backup data1
 snapshotbackup list data1
 snapshotbackup prune data1
+snapshotbackup decay data1
 ```
 
 
-prune retention policy
+retention policy
 --
 
-- all backups not older than `retain_all`
-- daily backups not older than `retain_daily`
-- weekly backups forever (*)
-- the latest backup is always preserved
+`prune` will preserve:
+-   all backups not older than `retain_all`
+-   daily backups not older than `retain_daily`
+-   weekly backups forever (see `decay`)
+-   the latest backup is always preserved
 
-(*) yes, forever. if the backup disc is full you have to manually delete the
-oldest snapshots.
+`decay` removes all backups older than configured `decay`.
 
 
 notification
@@ -95,6 +97,7 @@ make -f Makefile.demo setup
 make -f Makefile.demo backup
 make -f Makefile.demo list
 make -f Makefile.demo prune
+make -f Makefile.demo decay
 make -f Makefile.demo clean
 ```
 

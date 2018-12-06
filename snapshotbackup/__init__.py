@@ -41,41 +41,65 @@ def make_backup(source_dir, backup_dir, ignore, progress=False, checksum=False, 
             vol.snapshot_sync()
 
 
-def list_backups(backup_dir, retain_all_after, retain_daily_after):
+def list_backups(backup_dir, retain_all_after, retain_daily_after, decay_before):
     """list all backups for given configuration.
 
     :param str backup_dir:
     :param datetime.datetime retain_all_after:
     :param datetime.datetime retain_daily_after:
+    :param datetime.datetime decay_before:
     :return: None
     """
     logger.info(f'list backups, backup_dir={backup_dir}, retain_all_after={retain_all_after}, '
-                f'retain_daily_after={retain_daily_after}')
+                f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
     vol = BackupDir(backup_dir)
-    for backup in vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after):
+    for backup in vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
+                                  decay_before=decay_before):
         retain_all = backup.is_inside_retain_all_interval
         retain_daily = backup.is_inside_retain_daily_interval
         print(f'{backup.name}'
               f'\t{"retain_all" if retain_all else "retain_daily" if retain_daily else "        "}'
               f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
-              f'\t{"prune candidate" if backup.prune else ""}')
+              f'\t{"prune candidate" if backup.prune else ""}'
+              f'\t{"decay candidate" if backup.decay else ""}')
 
 
-def prune_backups(backup_dir, retain_all_after, retain_daily_after):
+def prune_backups(backup_dir, retain_all_after, retain_daily_after, decay_before):
     """delete all backups for given configuration which are not held by retention policy.
 
     :param str backup_dir:
     :param datetime.datetime retain_all_after:
     :param datetime.datetime retain_daily_after:
+    :param datetime.datetime decay_before:
     :return: None
     """
     logger.info(f'prune backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
-                f'retain_daily_after={retain_daily_after}')
+                f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
     vol = BackupDir(backup_dir)
-    backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after)
+    backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
+                              decay_before=decay_before)
     for to_be_pruned in [_b for _b in backups if _b.prune]:
         print(f'prune {to_be_pruned.name}')
         to_be_pruned.delete()
+
+
+def decay_backups(backup_dir, retain_all_after, retain_daily_after, decay_before):
+    """delete all backups for given configuration which are not held by retention policy.
+
+    :param str backup_dir:
+    :param datetime.datetime retain_all_after:
+    :param datetime.datetime retain_daily_after:
+    :param datetime.datetime decay_before:
+    :return: None
+    """
+    logger.info(f'prune backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
+                f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
+    vol = BackupDir(backup_dir)
+    backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
+                              decay_before=decay_before)
+    for to_decay in [_b for _b in backups if _b.decay]:
+        print(f'prune {to_decay.name}')
+        to_decay.delete()
 
 
 def setup_path(path):
@@ -163,9 +187,14 @@ def main(app):
                 send_notification(app.name, f'backup `{app.args.name}` finished',
                                   notify_remote=_config['notify_remote'])
         elif app.args.action in ['l', 'list']:
-            list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
+            list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
+                         _config['decay_before'])
         elif app.args.action in ['p', 'prune']:
-            prune_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
+            prune_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
+                          _config['decay_before'])
+        elif app.args.action in ['d', 'decay']:
+            decay_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
+                          _config['decay_before'])
     except SourceNotReachableError as e:
         app.exit(f'source dir `{e.path}` not found, is it mounted?')
     except BackupDirNotFoundError as e:
@@ -181,9 +210,9 @@ def main(app):
                  f'(rsync error {e.errno}, {e.error_message})')
 
 
-main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p'],
-                            help='setup backup path (`mkdir -p`), make backup, list backups '
-                                 'or prune backups not held by retention policy')
+main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd'],
+                            help='setup backup path (`mkdir -p`), make backup, list backups, '
+                                 'prune backups not held by retention policy or decay old backups')
 main.argparser.add_argument('name', help='section name in config file')
 main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
                             help='use given config file')
