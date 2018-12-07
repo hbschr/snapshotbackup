@@ -75,6 +75,26 @@ when running via cron or using `notify_remote` you may need to add
 `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus snapshotbackup backup data1`
 
 
+automatization
+--
+
+when using advanced installation methods and `cron` make sure `PATH` is
+properly setup, f.e.
+
+```
+PATH=/usr/local/bin:/bin:/usr/bin:/home/foo/.local/bin
+01 * * * * DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus snapshotbackup backup home -s
+```
+
+to allow non-interactive deletions configure `sudo` to allow your user "foo"
+to use some btrfs commands without password.
+
+```sudoers
+foo ALL=(ALL) NOPASSWD: /usr/bin/btrfs subvolume list *
+foo ALL=(ALL) NOPASSWD: /usr/bin/btrfs subvolume delete *
+```
+
+
 dev env
 ==
 
