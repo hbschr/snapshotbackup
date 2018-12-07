@@ -29,8 +29,8 @@ def test_run_false():
 @patch('subprocess.run')
 def test_run_silent(_):
     snapshotbackup.subprocess.run('example')
-    assert subprocess.run.call_args[0] == (('example',),)
-    kwargs = subprocess.run.call_args[1]
+    args, kwargs = subprocess.run.call_args
+    assert args[0] == ('example',)
     assert 'stdout' in kwargs and kwargs['stdout'] == subprocess.PIPE
     assert 'stderr' in kwargs and kwargs['stderr'] == subprocess.PIPE
 
@@ -38,8 +38,8 @@ def test_run_silent(_):
 @patch('subprocess.run')
 def test_run_not_silent(_):
     snapshotbackup.subprocess.run('example', show_output=True)
-    assert subprocess.run.call_args[0] == (('example',),)
-    kwargs = subprocess.run.call_args[1]
+    args, kwargs = subprocess.run.call_args
+    assert args[0] == ('example',)
     assert 'stdout' not in kwargs
     assert 'stderr' not in kwargs
 
@@ -53,8 +53,9 @@ def test_is_reachable():
 def test_is_reachable_ssh(mocked_run):
     snapshotbackup.subprocess.is_reachable('user@host:path')
     mocked_run.assert_called_once()
-    assert mocked_run.call_args[0][0] == 'ssh'
-    assert mocked_run.call_args[0][1] == 'user@host'
+    args, _ = mocked_run.call_args
+    assert args[0] == 'ssh'
+    assert args[1] == 'user@host'
 
 
 def test_is_reachable_error():
@@ -110,14 +111,16 @@ def test_delete_subvolume(_):
 def test_make_snapshot(_):
     snapshotbackup.subprocess.make_snapshot('source', 'target')
     assert subprocess.run.call_count == 2
-    assert '-r' in subprocess.run.call_args_list[0][0][0]
+    args, _ = subprocess.run.call_args_list[0]
+    assert '-r' in args[0]
 
 
 @patch('subprocess.run')
 def test_make_snapshot_writable(_):
     snapshotbackup.subprocess.make_snapshot('source', 'target', readonly=False)
     assert subprocess.run.call_count == 2
-    assert '-r' not in subprocess.run.call_args_list[0][0][0]
+    args, _ = subprocess.run.call_args_list[0]
+    assert '-r' not in args[0]
 
 
 @patch('subprocess.run')

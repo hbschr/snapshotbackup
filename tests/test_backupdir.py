@@ -17,7 +17,7 @@ def test_backupdir_no_btrfs(mock_is_btrfs):
         try:
             snapshotbackup.backupdir.BackupDir(path)
         except BackupDirError as e:
-            assert e.message.startswith('not a btrfs')
+            assert str(e).startswith('not a btrfs')
 
 
 @patch('snapshotbackup.backupdir.is_btrfs', return_value=True)
@@ -61,7 +61,8 @@ def test_backupdir_recover_sync_from_latest(mock_make_snapshot, mock_create_subv
     mock_is_btrfs.assert_called_once()
     mock_create_subvolume.assert_not_called()
     mock_make_snapshot.assert_called_once()
-    assert '1989-11-10T00+00' in mock_make_snapshot.call_args[0][0]
+    args, _ = mock_make_snapshot.call_args
+    assert '1989-11-10T00+00' in args[0]
 
 
 @patch('snapshotbackup.backupdir.is_btrfs', return_value=True)
