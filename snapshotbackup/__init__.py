@@ -11,7 +11,7 @@ from .backupdir import BackupDir
 from .config import parse_config
 from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, LockedError, \
     SourceNotReachableError, SyncFailedError, TimestampParseError
-from .subprocess import is_reachable, rsync, DEBUG_SHELL
+from .subprocess import delete_subvolume, is_reachable, rsync, DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
@@ -100,6 +100,25 @@ def decay_backups(backup_dir, retain_all_after, retain_daily_after, decay_before
     for to_decay in [_b for _b in backups if _b.decay]:
         print(f'prune {to_decay.name}')
         to_decay.delete()
+
+
+def delete_backups(backup_dir):
+    """delete all backups, including sync dir and delete backup directory itself.
+
+    :param str backup_dir:
+    :param bool confirm:
+    :return: None
+    """
+    logger.warning(f'delete all backups, backup_dir={backup_dir}')
+    vol = BackupDir(backup_dir)
+    if os.path.isdir(vol.sync_path):
+        print('delete sync dir')
+        delete_subvolume(vol.sync_path)
+    backups = vol.get_backups()
+    for backup in backups:
+        print(f'delete {backup.name}')
+        backup.delete()
+    os.rmdir(vol.path)
 
 
 def setup_path(path):
@@ -201,6 +220,11 @@ def main(app):
         elif app.args.action in ['d', 'decay']:
             decay_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
                           _config['decay_before'])
+        elif app.args.action in ['delete']:
+            if app.args.delete:
+                delete_backups(_config['backups'])
+            else:
+                app.exit('to delete all backups you must also give argument `--delete`')
     except SourceNotReachableError as e:
         app.exit(f'source dir `{e.path}` not found, is it mounted?')
     except BackupDirNotFoundError as e:
@@ -216,14 +240,16 @@ def main(app):
                  f'(rsync error {e.errno}, {e.error_message})')
 
 
-main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd'],
+main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd',
+                                               'delete'],
                             help='setup backup path (`mkdir -p`), make backup, list backups, '
-                                 'prune backups not held by retention policy or decay old backups')
+                                 'prune backups not held by retention policy, decay old backups or delete all backups')
 main.argparser.add_argument('name', help='section name in config file')
 main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
                             help='use given config file')
 main.argparser.add_argument('-d', '--debug', action='count', default=0,
                             help='lower logging threshold, may be used thrice')
+main.argparser.add_argument('--delete', action='store_true', help='together w/ `delete` this will delete all backups')
 main.argparser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
 main.argparser.add_argument('-s', '--silent', action='store_true',
                             help='silent mode: log errors, warnings and `--debug` to journald instead of stdout '

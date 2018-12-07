@@ -13,12 +13,18 @@ help:
 sleep:
 	sleep 1s
 
-setup:
+version:
+	snapshotbackup -v
+
+mount-fs:
 	mkdir -p $(mnt_dir)
 	fallocate -l $(isosize) $(isofile)
 	mkfs.btrfs $(isofile)
 	sudo mount -o loop $(isofile) $(mnt_dir)
 	sudo chmod a+w $(mnt_dir)
+
+setup:
+	$(script) $(opts) -c $(config) setup demo
 
 backup:
 	$(script) $(opts) -c $(config) backup demo
@@ -35,13 +41,14 @@ prune:
 decay:
 	$(script) $(opts) -c $(config) decay demo
 
+delete:
+	$(script) $(opts) -c $(config) delete demo --delete
+
+test: mount-fs version setup backup sleep backup-checksum list prune decay delete clean
+
 .IGNORE: clean
+.PHONY: clean
 clean:
 	sudo umount $(mnt_dir)
 	rmdir $(mnt_dir)
 	rm $(isofile)
-
-version:
-	snapshotbackup -v
-
-test: version setup backup sleep backup-checksum list prune decay clean

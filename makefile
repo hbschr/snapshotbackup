@@ -15,6 +15,11 @@ test:
 
 check: lint test
 
+.PHONY: demo
+demo:
+	$(MAKE) -f makefile.demo clean
+	$(MAKE) -f makefile.demo test
+
 clean-doc:
 	rm -rf doc/api doc/build doc/doctest
 
