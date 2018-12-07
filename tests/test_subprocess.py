@@ -71,12 +71,6 @@ def test_rsync_success(_):
     assert subprocess.run.call_count == 2
 
 
-@patch('subprocess.run')
-def test_create_subvolume(_):
-    snapshotbackup.subprocess.create_subvolume('path')
-    assert subprocess.run.call_count == 2
-
-
 @patch('subprocess.run', side_effect=subprocess.CalledProcessError(42, 'command'))
 def test_rsync_interrupted(_):
     with pytest.raises(snapshotbackup.exceptions.SyncFailedError) as excinfo:
@@ -84,6 +78,26 @@ def test_rsync_interrupted(_):
     assert excinfo.value.target == 'target'
     assert excinfo.value.errno == 42
     subprocess.run.assert_called_once()
+
+
+@patch('subprocess.run')
+def test_rsync_checksum(_):
+    snapshotbackup.subprocess.rsync('source', 'target', checksum=True)
+    args, kwargs = subprocess.run.call_args_list[0]
+    assert '--checksum' in args[0]
+
+
+@patch('subprocess.run')
+def test_rsync_dry_run(_):
+    snapshotbackup.subprocess.rsync('source', 'target', dry_run=True)
+    args, kwargs = subprocess.run.call_args_list[0]
+    assert '--dry-run' in args[0]
+
+
+@patch('subprocess.run')
+def test_create_subvolume(_):
+    snapshotbackup.subprocess.create_subvolume('path')
+    assert subprocess.run.call_count == 2
 
 
 @patch('subprocess.run')

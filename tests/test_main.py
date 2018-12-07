@@ -12,7 +12,7 @@ def test_main():
 def test_make_backup_plain(mocked_rsync, _):
     mocked_backupdir_instance = MagicMock()
     with patch('snapshotbackup.BackupDir', return_value=mocked_backupdir_instance):
-        snapshotbackup.make_backup('source', 'target', 'ignore')
+        snapshotbackup.make_backup('source', 'target', ('ignore',))
         mocked_rsync.assert_called_once()
         mocked_backupdir_instance.lock.assert_called_once()
         mocked_backupdir_instance.snapshot_sync.assert_called_once()
@@ -23,7 +23,7 @@ def test_make_backup_plain(mocked_rsync, _):
 def test_make_backup_dry_run(mocked_rsync, _):
     mocked_backupdir_instance = MagicMock()
     with patch('snapshotbackup.BackupDir', return_value=mocked_backupdir_instance):
-        snapshotbackup.make_backup('source', 'target', 'ignore', dry_run=True)
+        snapshotbackup.make_backup('source', 'target', ('ignore',), dry_run=True)
         mocked_rsync.assert_called_once()
         mocked_backupdir_instance.lock.assert_called_once()
         mocked_backupdir_instance.snapshot_sync.assert_not_called()

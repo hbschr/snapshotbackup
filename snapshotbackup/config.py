@@ -1,4 +1,5 @@
 import configparser
+import csv
 
 
 from .timestamps import parse_human_readable_relative_dates
@@ -11,6 +12,37 @@ _defaults = {
     'ignore': '',
     'notify_remote': '',
 }
+
+
+def _parse_ignore(line):
+    """get a line of comma seperated values and return items
+
+    :param str line: section in ini file to use
+
+    >>> from snapshotbackup.config import _parse_ignore
+    >>> _parse_ignore('item1')
+    ('item1',)
+    >>> _parse_ignore('item1,item2')
+    ('item1', 'item2')
+    >>> _parse_ignore('item1, item2')
+    ('item1', 'item2')
+    >>> _parse_ignore('string with whitespaces')
+    ('string with whitespaces',)
+    >>> _parse_ignore('"double quoted string with , comma"')
+    ('double quoted string with , comma',)
+    >>> _parse_ignore('42')
+    ('42',)
+    >>> len(_parse_ignore('string with escaped \\, comma')) == 1
+    False
+    >>> len(_parse_ignore("'single quoted string with , comma'")) == 1
+    False
+    >>> _parse_ignore('item1\\nitem2')
+    Traceback (most recent call last):
+    _csv.Error: ...
+    """
+    # mimic multiple lines w/ list
+    parser = csv.reader([line])
+    return tuple(item.strip() for row in parser for item in row)
 
 
 def parse_config(section, filepath):
@@ -29,7 +61,7 @@ def parse_config(section, filepath):
     return {
         'source': config[section]['source'],
         'backups': config[section]['backups'],
-        'ignore': config[section]['ignore'],
+        'ignore': _parse_ignore(config[section]['ignore']),
         'retain_all_after': parse_human_readable_relative_dates(config[section]['retain_all']),
         'retain_daily_after': parse_human_readable_relative_dates(config[section]['retain_daily']),
         'decay_before': parse_human_readable_relative_dates(config[section]['decay']),

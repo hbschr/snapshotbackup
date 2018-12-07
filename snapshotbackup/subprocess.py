@@ -69,7 +69,7 @@ def is_reachable(path):
         raise SourceNotReachableError(path)
 
 
-def rsync(source, target, exclude='', checksum=False, progress=False, dry_run=False):
+def rsync(source, target, exclude=(), checksum=False, progress=False, dry_run=False):
     """run `rsync` for given `source` and `target`.
 
     :param str source: path to read from
@@ -80,9 +80,14 @@ def rsync(source, target, exclude='', checksum=False, progress=False, dry_run=Fa
     :return: None
     """
     logger.info(f'sync `{source}` to `{target}`')
-    args = ['rsync', '--human-readable', '--itemize-changes', '--stats',
-            '-azv', '--sparse', '--delete', '--delete-excluded', f'--exclude={exclude}',
-            f'{source}/', target, '--checksum' if checksum else None, '--dry-run' if dry_run else None]
+    args = ['rsync', '--human-readable', '--itemize-changes', '--stats']
+    args.extend(['-azv', '--sparse', '--delete', '--delete-excluded'])
+    args.extend([f'--exclude={path}' for path in exclude])
+    args.extend([f'{source}/', target])
+    if checksum:
+        args.append('--checksum')
+    if dry_run:
+        args.append('--dry-run')
     try:
         run(*args, show_output=progress or dry_run)
         btrfs_sync(target)

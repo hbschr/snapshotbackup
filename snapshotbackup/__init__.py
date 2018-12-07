@@ -22,7 +22,7 @@ def make_backup(source_dir, backup_dir, ignore, progress=False, checksum=False, 
 
     :param str source_dir:
     :param str backup_dir:
-    :param str ignore:
+    :param tuple ignore:
     :param bool progress:
     :param bool checksum:
     :param bool dry_run:
