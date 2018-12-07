@@ -13,6 +13,8 @@ install
 
 ```commandline
 pip install snapshotbackup
+pip install snapshotbackup[ci]          # install ci related dependencies
+pip install snapshotbackup[dev]         # install dev dependencies
 pip install snapshotbackup[journald]    # enable logging to journald with `--silent`
 ```
 
