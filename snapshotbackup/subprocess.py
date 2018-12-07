@@ -79,7 +79,7 @@ def rsync(source, target, exclude=(), checksum=False, progress=False, dry_run=Fa
     :raise SyncFailedError: when sync is interrupted
     :return: None
     """
-    logger.info(f'sync `{source}` to `{target}`')
+    logger.debug(f'sync `{source}` to `{target}`')
     args = ['rsync', '--human-readable', '--itemize-changes', '--stats']
     args.extend(['-azv', '--sparse', '--delete', '--delete-excluded'])
     args.extend([f'--exclude={path}' for path in exclude])
@@ -102,7 +102,7 @@ def create_subvolume(path):
     :param str path: filesystem path
     :return: None
     """
-    logger.info(f'create subvolume `{path}`')
+    logger.debug(f'create subvolume `{path}`')
     run('btrfs', 'subvolume', 'create', path)
     btrfs_sync(path)
 
@@ -126,7 +126,7 @@ def make_snapshot(source, target, readonly=True):
     :param bool readonly: if `True` snapshot will not be writable
     :return: None
     """
-    logger.info(f'create snapshot `{target}`')
+    logger.debug(f'create snapshot `{target}`')
     args = 'btrfs', 'subvolume', 'snapshot', '-r' if readonly else None, source, target
     run(*args)
     btrfs_sync(target)

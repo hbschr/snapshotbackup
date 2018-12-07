@@ -9,15 +9,32 @@ _defaults = {
     'retain_all': '1 day',
     'retain_daily': '1 month',
     'decay': '1 year',
+    'autodecay': '',
+    'autoprune': '',
     'ignore': '',
     'notify_remote': '',
 }
 
 
+def _parse_bool(line):
+    """parse a string input to boolean.
+
+    :param line:
+    :return bool:
+    >>> from snapshotbackup.config import _parse_bool
+    >>> _parse_bool('true') and _parse_bool('True') and _parse_bool('1')
+    True
+    >>> _parse_bool('') or _parse_bool('0') or _parse_bool('foo')
+    False
+    """
+    return line in ('true', 'True', '1')
+
+
 def _parse_ignore(line):
-    """get a line of comma seperated values and return items
+    """get a line of comma seperated values and return items.
 
     :param str line: section in ini file to use
+    :return tuple:
 
     >>> from snapshotbackup.config import _parse_ignore
     >>> _parse_ignore('item1')
@@ -65,5 +82,7 @@ def parse_config(section, filepath):
         'retain_all_after': parse_human_readable_relative_dates(config[section]['retain_all']),
         'retain_daily_after': parse_human_readable_relative_dates(config[section]['retain_daily']),
         'decay_before': parse_human_readable_relative_dates(config[section]['decay']),
+        'autodecay': _parse_bool(config[section]['autodecay']),
+        'autoprune': _parse_bool(config[section]['autoprune']),
         'notify_remote': config[section]['notify_remote'] or None,
     }

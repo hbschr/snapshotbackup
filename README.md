@@ -37,6 +37,9 @@ source = /path/to/data2
 backups = /backups/data2
 ignore = /.cache
 retain_all = '1 week'
+; '1', 'true' or 'True' for `True`, everything else is `False`
+autodecay = 1
+autoprune = true
 notify_remote = user@host
 ```
 

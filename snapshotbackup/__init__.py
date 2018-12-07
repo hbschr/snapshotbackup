@@ -17,15 +17,15 @@ __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
 
 
-def make_backup(source_dir, backup_dir, ignore, progress=False, checksum=False, dry_run=False):
+def make_backup(source_dir, backup_dir, ignore, checksum=False, dry_run=False, progress=False):
     """make a backup for given configuration.
 
     :param str source_dir:
     :param str backup_dir:
     :param tuple ignore:
-    :param bool progress:
     :param bool checksum:
     :param bool dry_run:
+    :param bool progress:
     :return: None
     """
     logger.info(f'make backup, source_dir={source_dir}, backup_dir={backup_dir}, ignore={ignore}, progress={progress}')
@@ -92,7 +92,7 @@ def decay_backups(backup_dir, retain_all_after, retain_daily_after, decay_before
     :param datetime.datetime decay_before:
     :return: None
     """
-    logger.info(f'prune backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
+    logger.info(f'decay backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
                 f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
     vol = BackupDir(backup_dir)
     backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
@@ -183,6 +183,12 @@ def main(app):
         elif app.args.action in ['b', 'backup']:
             make_backup(app.args.source or _config['source'], _config['backups'], _config['ignore'],
                         progress=app.args.progress, checksum=app.args.checksum, dry_run=app.args.dry_run)
+            if _config['autoprune']:
+                prune_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
+                              _config['decay_before'])
+            if _config['autodecay']:
+                decay_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
+                              _config['decay_before'])
             if not app.args.dry_run:
                 send_notification(app.name, f'backup `{app.args.name}` finished',
                                   notify_remote=_config['notify_remote'])
