@@ -11,7 +11,7 @@ from .backupdir import BackupDir
 from .config import parse_config
 from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, LockedError, \
     SourceNotReachableError, SyncFailedError, TimestampParseError
-from .subprocess import delete_subvolume, is_reachable, rsync, DEBUG_SHELL
+from .subprocess import is_reachable, rsync, DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
@@ -31,10 +31,10 @@ def make_backup(source_dir, backup_dir, ignore, checksum=False, dry_run=False, p
     logger.info(f'make backup, source_dir={source_dir}, backup_dir={backup_dir}, ignore={ignore}, progress={progress}')
     is_reachable(source_dir)
     vol = BackupDir(backup_dir, assert_syncdir=True)
-    with vol.lock():
+    with vol.volume.lock():
         if dry_run:
             print(f'dry run, no changes will be made on disk, this is what rsync would do:')
-        rsync(source_dir, vol.sync_path, exclude=ignore, checksum=checksum, progress=progress, dry_run=dry_run)
+        rsync(source_dir, vol.volume.sync_path, exclude=ignore, checksum=checksum, progress=progress, dry_run=dry_run)
         if dry_run:
             print(f'dry run, no changes were made on disk')
         else:
@@ -110,14 +110,11 @@ def delete_backups(backup_dir):
     """
     logger.warning(f'delete all backups, backup_dir={backup_dir}')
     vol = BackupDir(backup_dir)
-    if os.path.isdir(vol.sync_path):
-        print('delete sync dir')
-        delete_subvolume(vol.sync_path)
-    backups = vol.get_backups()
-    for backup in backups:
+    vol.delete_syncdir()
+    for backup in vol.get_backups():
         print(f'delete {backup.name}')
         backup.delete()
-    os.rmdir(vol.path)
+    os.rmdir(vol.volume.path)
 
 
 def delete_syncdir(backup_dir):
@@ -127,9 +124,7 @@ def delete_syncdir(backup_dir):
     :return: None
     """
     logger.info(f'delete sync dir, backup_dir={backup_dir}')
-    vol = BackupDir(backup_dir)
-    if os.path.isdir(vol.sync_path):
-        delete_subvolume(vol.sync_path)
+    BackupDir(backup_dir).delete_syncdir()
 
 
 def setup_path(path):

@@ -1,97 +1,49 @@
 import os
 from datetime import datetime
 
-from .exceptions import BackupDirError, BackupDirNotFoundError, LockedError
-from .subprocess import create_subvolume, delete_subvolume, is_btrfs, make_snapshot
+from .subprocess import delete_subvolume
 from .timestamps import earliest_time, get_timestamp, is_same_day, is_same_week, is_timestamp, parse_timestamp
-
-_sync_dir = '.sync'
-_sync_lockfile = '.sync_lock'
+from .volume import BtrfsVolume
 
 
 class BackupDir(object):
     """a backup dir contains all snapshots and a sync dir.
     the directory must be reachable via file system and has to be on a btrfs filesystem.
+    all checks from :func:`BtrfsVolume.init` are performed.
 
     optional this class provides a sync dir (btrfs subvolume) which can be locked.
-    for more details about checks consult :func:`__init__`.
-
-    >>> import os, os.path, stat, tempfile
-    >>> from snapshotbackup.backupdir import BackupDir
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     BackupDir(os.path.join(path, 'nope'))
-    Traceback (most recent call last):
-    snapshotbackup.exceptions.BackupDirNotFoundError: ...
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     not_a_dir = os.path.join(path, 'file')
-    ...     open(not_a_dir, 'w').close()
-    ...     BackupDir(not_a_dir)
-    Traceback (most recent call last):
-    snapshotbackup.exceptions.BackupDirError: not a directory ...
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     os.chmod(path, stat.S_IRUSR)
-    ...     BackupDir(path, assert_writable=True)
-    Traceback (most recent call last):
-    snapshotbackup.exceptions.BackupDirError: not writable ...
     """
 
-    path: str
-    """absolute path to backup dir"""
-
-    sync_path: str
-    """absolute path to sync dir"""
+    volume: BtrfsVolume
+    """instance of :class:`snapshotbackup.volume.BtrfsVolume`"""
 
     def __init__(self, dir, assert_syncdir=False, assert_writable=False):
-        """check that `path`
+        """checks some general assumptions about `dir` (see :func:`BtrfsVolume.__init__`) and create sync dir when
+        not yet present.
 
-        - exists
-        - is on a btrfs filesystem.
-        - is writable (optional)
-        - has sync dir, create if needed (optional)
-        - ... which is btrfs subvolume (not implemented).
+        not implemented: check if sync dir is btrfs subvolume.
 
         :param str dir:
-        :param bool assert_syncdir: if true syncdir will be checked and created if needed, also checks `writable`
-        :param bool assert_writable bool: if true write access for current process will be checked
-        :raise BackupDirNotFoundError: backup dir not found
-        :raise BackupDirError: general error with meaningful message
+        :param bool assert_syncdir: if `True` syncdir will be created if needed, also implies `assert_writable`
+        :param bool assert_writable: if `True` write access for current process will be checked
+        :raise Error: see :func:`BtrfsVolume.__init__`
         """
-        self.path = os.path.abspath(dir)
-        self.sync_path = os.path.join(self.path, _sync_dir)
+        self.volume = BtrfsVolume(dir, assert_writable=assert_writable or assert_syncdir)
 
-        if not os.path.exists(self.path):
-            raise BackupDirNotFoundError(self.path)
-
-        if not os.path.isdir(self.path):
-            raise BackupDirError(f'not a directory {self.path}', self.path)
-
-        if (assert_writable or assert_syncdir) and not os.access(self.path, os.W_OK):
-            raise BackupDirError(f'not writable {self.path}', self.path)
-
-        if not is_btrfs(self.path):
-            raise BackupDirError(f'not a btrfs {self.path}', self.path)
-
-        if assert_syncdir and not os.path.isdir(self.sync_path):
+        if assert_syncdir and not os.path.isdir(self.volume.sync_path):
             try:
                 _last = self.get_backups().pop()
-                make_snapshot(_last.path, self.sync_path, readonly=False)
+                self.volume.make_snapshot(_last.name, self.volume.sync_path, readonly=False)
             except IndexError:
-                create_subvolume(self.sync_path)
+                self.volume.create_subvolume(self.volume.sync_path)
 
-    def lock(self):
-        """lock sync dir.
-
-        :return object: a :class:`snapshotbackup.backupdir.Lock` context
-        """
-        return Lock(self.path)
-
-    def snapshot_sync(self):
-        """make a snapshot of sync dir.
+    def delete_syncdir(self):
+        """deletes sync dir when found, otherwise nothing.
 
         :return: None
         """
-        target_path = os.path.join(self.path, get_timestamp().isoformat())
-        make_snapshot(self.sync_path, target_path)
+        if os.path.isdir(self.volume.sync_path):
+            self.volume.delete_subvolume(self.volume.sync_path)
 
     def get_backups(self, retain_all_after=earliest_time, retain_daily_after=earliest_time, decay_before=earliest_time):
         """create list of all backups in this backup dir.
@@ -102,7 +54,7 @@ class BackupDir(object):
         :rtype: [snapshotbackup.backup.Backup]
         """
         dirs = []
-        for _root, _dirs, _files in os.walk(self.path):
+        for _root, _dirs, _files in os.walk(self.volume.path):
             dirs = [_dir for _dir in _dirs if is_timestamp(_dir)]
             break
 
@@ -110,9 +62,16 @@ class BackupDir(object):
         backups = []
         for _index, _dir in enumerate(dirs):
             previous = backups[len(backups) - 1] if len(backups) > 0 else None
-            backups.append(Backup(_dir, self.path, retain_all_after, retain_daily_after, decay_before,
+            backups.append(Backup(_dir, self.volume.path, retain_all_after, retain_daily_after, decay_before,
                                   previous=previous, is_last=_index == len(dirs)))
         return backups
+
+    def snapshot_sync(self):
+        """make a snapshot of sync dir.
+
+        :return: None
+        """
+        self.volume.make_snapshot(self.volume.sync_path, get_timestamp().isoformat())
 
 
 class Backup(object):
@@ -248,58 +207,3 @@ class Backup(object):
     def delete(self):
         """delete this backup"""
         delete_subvolume(self.path)
-
-
-class Lock(object):
-    """lockfile as context manager.
-
-    :raise LockedError: when lockfile already exists
-    :raise FileNotFoundError: when lockfile cannot be created (missing dir)
-    :raise OSError: others may occur
-
-    >>> import tempfile
-    >>> import os.path
-    >>> from snapshotbackup.backupdir import Lock
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(path):
-    ...         pass
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(path):
-    ...         pass
-    ...     with Lock(path):
-    ...         pass
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(path):
-    ...         with Lock(path):
-    ...             pass
-    Traceback (most recent call last):
-    snapshotbackup.exceptions.LockedError: ...
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(os.path.join(path, 'nope')):
-    ...         pass
-    Traceback (most recent call last):
-    FileNotFoundError: ...
-    """
-    _dir: str
-    """full path to directory"""
-
-    _lockfile: str
-    """full path to the lockfile"""
-
-    def __init__(self, dir):
-        """initialize lock
-
-        :param str dir: path where lockfile shall be created
-        """
-        self._dir = os.path.abspath(dir)
-        self._lockfile = os.path.join(self._dir, _sync_lockfile)
-
-    def __enter__(self):
-        """enter locked context: create lockfile or throw error"""
-        if os.path.isfile(self._lockfile):
-            raise LockedError(self._lockfile)
-        open(self._lockfile, 'w').close()
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        """exit locked context: remove lockfile"""
-        os.remove(self._lockfile)
