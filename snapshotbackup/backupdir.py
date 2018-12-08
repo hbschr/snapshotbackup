@@ -251,7 +251,7 @@ class Backup(object):
 
 
 class Lock(object):
-    """lockfile as context manager
+    """lockfile as context manager.
 
     :raise LockedError: when lockfile already exists
     :raise FileNotFoundError: when lockfile cannot be created (missing dir)
@@ -261,6 +261,11 @@ class Lock(object):
     >>> import os.path
     >>> from snapshotbackup.backupdir import Lock
     >>> with tempfile.TemporaryDirectory() as path:
+    ...     with Lock(path):
+    ...         pass
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     with Lock(path):
+    ...         pass
     ...     with Lock(path):
     ...         pass
     >>> with tempfile.TemporaryDirectory() as path:
@@ -291,11 +296,9 @@ class Lock(object):
 
     def __enter__(self):
         """enter locked context: create lockfile or throw error"""
-        try:
-            open(self._lockfile, 'r').close()
+        if os.path.isfile(self._lockfile):
             raise LockedError(self._lockfile)
-        except FileNotFoundError:
-            open(self._lockfile, 'w').close()
+        open(self._lockfile, 'w').close()
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         """exit locked context: remove lockfile"""
