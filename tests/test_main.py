@@ -63,3 +63,17 @@ def test_decay_backups():
         mocked_backupdir_instance.get_backups.assert_called_once()
         mocked_backup_instance_old.delete.assert_called_once()
         mocked_backup_instance_new.delete.assert_not_called()
+
+
+@patch('os.rmdir')
+@patch('snapshotbackup.subprocess.delete_subvolume')
+def test_delete_backups(mocked_delete_subvolume, mocked_rmdir):
+    mocked_backup_instance = MagicMock()
+    mocked_backupdir_instance = MagicMock()
+    mocked_backupdir_instance.get_backups.return_value = [mocked_backup_instance]
+    with patch('snapshotbackup.BackupDir', return_value=mocked_backupdir_instance):
+        snapshotbackup.delete_backups('dir')
+    # no sync dir provided
+    mocked_delete_subvolume.not_called()
+    mocked_backup_instance.delete.assert_called_once()
+    mocked_rmdir.assert_called_once()
