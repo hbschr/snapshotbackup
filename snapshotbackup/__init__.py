@@ -106,7 +106,6 @@ def delete_backups(backup_dir):
     """delete all backups, including sync dir and delete backup directory itself.
 
     :param str backup_dir:
-    :param bool confirm:
     :return: None
     """
     logger.warning(f'delete all backups, backup_dir={backup_dir}')
@@ -119,6 +118,18 @@ def delete_backups(backup_dir):
         print(f'delete {backup.name}')
         backup.delete()
     os.rmdir(vol.path)
+
+
+def delete_syncdir(backup_dir):
+    """delete sync dir of `backup_dir`.
+
+    :param str backup_dir:
+    :return: None
+    """
+    logger.info(f'delete sync dir, backup_dir={backup_dir}')
+    vol = BackupDir(backup_dir)
+    if os.path.isdir(vol.sync_path):
+        delete_subvolume(vol.sync_path)
 
 
 def setup_path(path):
@@ -225,6 +236,10 @@ def main(app):
                 delete_backups(_config['backups'])
             else:
                 app.exit('to delete all backups you must also give argument `--delete`')
+        elif app.args.action in ['clean']:
+            delete_syncdir(_config['backups'])
+        else:
+            app.exit(f'unknown command `{app.args.action}`')
     except SourceNotReachableError as e:
         app.exit(f'source dir `{e.path}` not found, is it mounted?')
     except BackupDirNotFoundError as e:
@@ -241,9 +256,10 @@ def main(app):
 
 
 main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd',
-                                               'delete'],
+                                               'delete', 'clean'],
                             help='setup backup path (`mkdir -p`), make backup, list backups, '
-                                 'prune backups not held by retention policy, decay old backups or delete all backups')
+                                 'prune backups not held by retention policy, decay old backups, '
+                                 'delete all backups or clean backup directory')
 main.argparser.add_argument('name', help='section name in config file')
 main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
                             help='use given config file')

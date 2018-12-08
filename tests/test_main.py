@@ -77,3 +77,12 @@ def test_delete_backups(mocked_delete_subvolume, mocked_rmdir):
     mocked_delete_subvolume.not_called()
     mocked_backup_instance.delete.assert_called_once()
     mocked_rmdir.assert_called_once()
+
+
+@patch('snapshotbackup.subprocess.delete_subvolume')
+def test_delete_sync_dir(mocked_delete_subvolume):
+    mocked_backupdir_instance = MagicMock()
+    with patch('snapshotbackup.BackupDir', return_value=mocked_backupdir_instance):
+        snapshotbackup.delete_syncdir('dir')
+    # no sync dir provided
+    mocked_delete_subvolume.not_called()
