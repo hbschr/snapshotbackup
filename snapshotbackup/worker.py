@@ -6,7 +6,7 @@ from .timestamps import earliest_time, get_timestamp, is_same_day, is_same_week,
 from .volume import BtrfsVolume
 
 
-class BackupDir(object):
+class Worker(object):
     """a backup dir contains all snapshots and a sync dir.
     the directory must be reachable via file system and has to be on a btrfs filesystem.
     all checks from :func:`BtrfsVolume.init` are performed.
@@ -78,7 +78,7 @@ class Backup(object):
     """Used as a container for all metadata attached to a finished backup.
 
     >>> from datetime import datetime
-    >>> from snapshotbackup.backupdir import Backup
+    >>> from snapshotbackup.worker import Backup
     >>> retain_all = datetime(1970, 3, 1)
     >>> retain_daily = datetime(1970, 2, 1)
     >>> decay = datetime(1970, 1, 1, 1)

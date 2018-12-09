@@ -7,7 +7,7 @@ from csboilerplate import cli_app
 from pkg_resources import get_distribution
 
 from .notify import send_notification
-from .backupdir import BackupDir
+from .worker import Worker
 from .config import parse_config
 from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, LockedError, \
     SourceNotReachableError, SyncFailedError, TimestampParseError
@@ -30,15 +30,16 @@ def make_backup(source_dir, backup_dir, ignore, checksum=False, dry_run=False, p
     """
     logger.info(f'make backup, source_dir={source_dir}, backup_dir={backup_dir}, ignore={ignore}, progress={progress}')
     is_reachable(source_dir)
-    vol = BackupDir(backup_dir, assert_syncdir=True)
-    with vol.volume.lock():
+    worker = Worker(backup_dir, assert_syncdir=True)
+    with worker.volume.lock():
         if dry_run:
             print(f'dry run, no changes will be made on disk, this is what rsync would do:')
-        rsync(source_dir, vol.volume.sync_path, exclude=ignore, checksum=checksum, progress=progress, dry_run=dry_run)
+        rsync(source_dir, worker.volume.sync_path, exclude=ignore, checksum=checksum, progress=progress,
+              dry_run=dry_run)
         if dry_run:
             print(f'dry run, no changes were made on disk')
         else:
-            vol.snapshot_sync()
+            worker.snapshot_sync()
 
 
 def list_backups(backup_dir, retain_all_after, retain_daily_after, decay_before):
@@ -52,9 +53,9 @@ def list_backups(backup_dir, retain_all_after, retain_daily_after, decay_before)
     """
     logger.info(f'list backups, backup_dir={backup_dir}, retain_all_after={retain_all_after}, '
                 f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
-    vol = BackupDir(backup_dir)
-    for backup in vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
-                                  decay_before=decay_before):
+    worker = Worker(backup_dir)
+    for backup in worker.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
+                                     decay_before=decay_before):
         retain_all = backup.is_inside_retain_all_interval
         retain_daily = backup.is_inside_retain_daily_interval
         print(f'{backup.name}'
@@ -75,9 +76,9 @@ def prune_backups(backup_dir, retain_all_after, retain_daily_after, decay_before
     """
     logger.info(f'prune backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
                 f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
-    vol = BackupDir(backup_dir)
-    backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
-                              decay_before=decay_before)
+    worker = Worker(backup_dir)
+    backups = worker.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
+                                 decay_before=decay_before)
     for to_be_pruned in [_b for _b in backups if _b.prune]:
         print(f'prune {to_be_pruned.name}')
         to_be_pruned.delete()
@@ -94,9 +95,9 @@ def decay_backups(backup_dir, retain_all_after, retain_daily_after, decay_before
     """
     logger.info(f'decay backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
                 f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
-    vol = BackupDir(backup_dir)
-    backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
-                              decay_before=decay_before)
+    worker = Worker(backup_dir)
+    backups = worker.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
+                                 decay_before=decay_before)
     for to_decay in [_b for _b in backups if _b.decay]:
         print(f'prune {to_decay.name}')
         to_decay.delete()
@@ -109,12 +110,12 @@ def delete_backups(backup_dir):
     :return: None
     """
     logger.warning(f'delete all backups, backup_dir={backup_dir}')
-    vol = BackupDir(backup_dir)
-    vol.delete_syncdir()
-    for backup in vol.get_backups():
+    worker = Worker(backup_dir)
+    worker.delete_syncdir()
+    for backup in worker.get_backups():
         print(f'delete {backup.name}')
         backup.delete()
-    os.rmdir(vol.volume.path)
+    os.rmdir(worker.volume.path)
 
 
 def delete_syncdir(backup_dir):
@@ -124,7 +125,7 @@ def delete_syncdir(backup_dir):
     :return: None
     """
     logger.info(f'delete sync dir, backup_dir={backup_dir}')
-    BackupDir(backup_dir).delete_syncdir()
+    Worker(backup_dir).delete_syncdir()
 
 
 def setup_path(path):
