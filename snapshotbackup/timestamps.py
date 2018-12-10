@@ -6,6 +6,7 @@ from .exceptions import TimestampParseError
 
 
 earliest_time = isoparse('0001-01-01T00+00:00')
+"""earliest possible datetime, `datetime.min` is not offset-aware"""
 
 
 def get_timestamp():

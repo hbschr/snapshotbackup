@@ -11,51 +11,30 @@ from .worker import Worker
 from .config import parse_config
 from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, LockedError, \
     SourceNotReachableError, SyncFailedError, TimestampParseError
-from .subprocess import is_reachable, rsync, DEBUG_SHELL
+from .subprocess import DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
 
 
-def make_backup(source_dir, backup_dir, ignore, checksum=False, dry_run=False, progress=False):
-    """make a backup for given configuration.
-
-    :param str source_dir:
-    :param str backup_dir:
-    :param tuple ignore:
-    :param bool checksum:
-    :param bool dry_run:
-    :param bool progress:
-    :return: None
+def _delete_volume_prompt_approve(name):
     """
-    logger.info(f'make backup, source_dir={source_dir}, backup_dir={backup_dir}, ignore={ignore}, progress={progress}')
-    is_reachable(source_dir)
-    worker = Worker(backup_dir, assert_syncdir=True)
-    with worker.volume.lock():
-        if dry_run:
-            print(f'dry run, no changes will be made on disk, this is what rsync would do:')
-        rsync(source_dir, worker.volume.sync_path, exclude=ignore, checksum=checksum, progress=progress,
-              dry_run=dry_run)
-        if dry_run:
-            print(f'dry run, no changes were made on disk')
-        else:
-            worker.snapshot_sync()
+
+    :param name:
+    :return bool:
+    """
+    print(f'delete {name}')
+    return True
 
 
-def list_backups(backup_dir, retain_all_after, retain_daily_after, decay_before):
+def list_backups(worker):
     """list all backups for given configuration.
 
-    :param str backup_dir:
-    :param datetime.datetime retain_all_after:
-    :param datetime.datetime retain_daily_after:
-    :param datetime.datetime decay_before:
+    :param Worker worker:
     :return: None
     """
-    logger.info(f'list backups, backup_dir={backup_dir}, retain_all_after={retain_all_after}, '
-                f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
-    worker = Worker(backup_dir)
-    for backup in worker.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
-                                     decay_before=decay_before):
+    logger.info(f'list backups, {worker}')
+    for backup in worker.get_backups():
         retain_all = backup.is_inside_retain_all_interval
         retain_daily = backup.is_inside_retain_daily_interval
         print(f'{backup.name}'
@@ -63,69 +42,6 @@ def list_backups(backup_dir, retain_all_after, retain_daily_after, decay_before)
               f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
               f'\t{"prune candidate" if backup.prune else ""}'
               f'\t{"decay candidate" if backup.decay else ""}')
-
-
-def prune_backups(backup_dir, retain_all_after, retain_daily_after, decay_before):
-    """delete all backups for given configuration which are not held by retention policy.
-
-    :param str backup_dir:
-    :param datetime.datetime retain_all_after:
-    :param datetime.datetime retain_daily_after:
-    :param datetime.datetime decay_before:
-    :return: None
-    """
-    logger.info(f'prune backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
-                f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
-    worker = Worker(backup_dir)
-    backups = worker.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
-                                 decay_before=decay_before)
-    for to_be_pruned in [_b for _b in backups if _b.prune]:
-        print(f'prune {to_be_pruned.name}')
-        to_be_pruned.delete()
-
-
-def decay_backups(backup_dir, retain_all_after, retain_daily_after, decay_before):
-    """delete all backups for given configuration which are not held by retention policy.
-
-    :param str backup_dir:
-    :param datetime.datetime retain_all_after:
-    :param datetime.datetime retain_daily_after:
-    :param datetime.datetime decay_before:
-    :return: None
-    """
-    logger.info(f'decay backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
-                f'retain_daily_after={retain_daily_after}, decay_before={decay_before}')
-    worker = Worker(backup_dir)
-    backups = worker.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after,
-                                 decay_before=decay_before)
-    for to_decay in [_b for _b in backups if _b.decay]:
-        print(f'prune {to_decay.name}')
-        to_decay.delete()
-
-
-def delete_backups(backup_dir):
-    """delete all backups, including sync dir and delete backup directory itself.
-
-    :param str backup_dir:
-    :return: None
-    """
-    logger.warning(f'delete all backups, backup_dir={backup_dir}')
-    worker = Worker(backup_dir)
-    worker.delete_syncdir()
-    for backup in worker.get_backups():
-        print(f'delete {backup.name}')
-        backup.delete()
-    os.rmdir(worker.volume.path)
-
-
-def delete_syncdir(backup_dir):
-    """delete sync dir of `backup_dir`.
-
-    :param str backup_dir:
-    :return: None
-    """
-    logger.info(f'delete sync dir, backup_dir={backup_dir}')
-    Worker(backup_dir).delete_syncdir()
 
 
 def setup_path(path):
@@ -206,36 +122,30 @@ def main(app):
     try:
         if app.args.action in ['s', 'setup']:
             setup_path(_config['backups'])
-        elif app.args.action in ['b', 'backup']:
-            make_backup(app.args.source or _config['source'], _config['backups'], _config['ignore'],
-                        progress=app.args.progress, checksum=app.args.checksum, dry_run=app.args.dry_run)
-            if _config['autoprune']:
-                prune_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
-                              _config['decay_before'])
-            if _config['autodecay']:
-                decay_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
-                              _config['decay_before'])
+        worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
+                        retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
+        if app.args.action in ['b', 'backup']:
+            worker.make_backup(app.args.source or _config['source'], _config['ignore'], autodecay=_config['autodecay'],
+                               autoprune=_config['autoprune'], checksum=app.args.checksum, dry_run=app.args.dry_run,
+                               progress=app.args.progress)
             if not app.args.dry_run:
                 send_notification(app.name, f'backup `{app.args.name}` finished',
                                   notify_remote=_config['notify_remote'])
         elif app.args.action in ['l', 'list']:
-            list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
-                         _config['decay_before'])
-        elif app.args.action in ['p', 'prune']:
-            prune_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
-                          _config['decay_before'])
+            list_backups(worker)
         elif app.args.action in ['d', 'decay']:
-            decay_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'],
-                          _config['decay_before'])
+            worker.decay_backups(_delete_volume_prompt_approve)
+        elif app.args.action in ['p', 'prune']:
+            worker.prune_backups(_delete_volume_prompt_approve)
         elif app.args.action in ['delete']:
             if app.args.delete:
-                delete_backups(_config['backups'])
+                worker.destroy_volume(_delete_volume_prompt_approve)
             else:
                 app.exit('to delete all backups you must also give argument `--delete`')
         elif app.args.action in ['clean']:
-            delete_syncdir(_config['backups'])
-        else:
-            app.exit(f'unknown command `{app.args.action}`')
+            worker.delete_syncdir()
+        # else:
+        #     app.exit(f'unknown command `{app.args.action}`')
     except SourceNotReachableError as e:
         app.exit(f'source dir `{e.path}` not found, is it mounted?')
     except BackupDirNotFoundError as e:
