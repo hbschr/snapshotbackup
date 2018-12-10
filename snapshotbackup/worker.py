@@ -17,20 +17,28 @@ class Worker(object):
     volume: BtrfsVolume
     """instance of :class:`snapshotbackup.volume.BtrfsVolume`"""
 
-    def __init__(self, dir, assert_syncdir=False, assert_writable=False):
+    def __init__(self, dir, assert_syncdir=False):
         """checks some general assumptions about `dir` (see :func:`BtrfsVolume.__init__`) and create sync dir when
         not yet present.
 
-        not implemented: check if sync dir is btrfs subvolume.
-
         :param str dir:
-        :param bool assert_syncdir: if `True` syncdir will be created if needed, also implies `assert_writable`
-        :param bool assert_writable: if `True` write access for current process will be checked
+        :param bool assert_syncdir: if `True` syncdir will be created if needed
         :raise Error: see :func:`BtrfsVolume.__init__`
         """
-        self.volume = BtrfsVolume(dir, assert_writable=assert_writable or assert_syncdir)
+        self.volume = BtrfsVolume(dir)
 
-        if assert_syncdir and not os.path.isdir(self.volume.sync_path):
+        if assert_syncdir:
+            self._assert_syncdir()
+
+    def _assert_syncdir(self):
+        """assert existence of syncdir, create if not present.
+
+        not implemented: check if sync dir is btrfs subvolume.
+
+        :return: None
+        """
+        self.volume.assure_writable()
+        if not os.path.isdir(self.volume.sync_path):
             try:
                 _last = self.get_backups().pop()
                 self.volume.make_snapshot(_last.name, self.volume.sync_path, readonly=False)

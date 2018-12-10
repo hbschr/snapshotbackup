@@ -1,6 +1,5 @@
 import os
 import pytest
-import stat
 import tempfile
 from unittest.mock import patch
 
@@ -28,14 +27,6 @@ def test_btrfs_volume_no_dir():
         with pytest.raises(BackupDirError) as excinfo:
             BtrfsVolume(not_a_dir)
         assert excinfo.value.message.startswith('not a directory')
-
-
-def test_btrfs_volume_not_writable():
-    with tempfile.TemporaryDirectory() as path:
-        os.chmod(path, stat.S_IRUSR)
-        with pytest.raises(BackupDirError) as excinfo:
-            BtrfsVolume(path, assert_writable=True)
-        assert excinfo.value.message.startswith('not writable')
 
 
 @patch('snapshotbackup.volume.is_btrfs', return_value=False)

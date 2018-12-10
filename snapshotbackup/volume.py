@@ -8,15 +8,13 @@ _sync_lockfile = '.sync_lock'
 
 
 class BaseVolume(object):
-    """
-
-    """
+    """some basic tools for backup volumes."""
 
     path: str
     """absolute path to this volume"""
 
     sync_path: str
-    """absolute path to sync dir"""
+    """absolute path to this volume's sync dir"""
 
     def __init__(self, path):
         """
@@ -26,11 +24,12 @@ class BaseVolume(object):
         self.path = os.path.abspath(path)
         self.sync_path = self._path_join(_sync_dir)
 
-    def _path_join(self, relative):
-        """
+    def _path_join(self, path):
+        """get path relative to this volume.
 
-        :param str relative:
-        :return:
+        :param str path: relative or absolute path, see :func:`os.path.join`
+        :raise RuntimeError: when resulting path is not inside this volume
+        :return str: absolute path
 
         >>> from snapshotbackup.volume import BaseVolume
         >>> vol = BaseVolume('/foo/bar')
@@ -41,11 +40,34 @@ class BaseVolume(object):
         >>> vol._path_join('/elsewhere/baz')
         Traceback (most recent call last):
         RuntimeError: ...
+        >>> vol._path_join('../bar/baz')
+        '/foo/bar/baz'
+        >>> vol._path_join('../elsewhere/baz')
+        Traceback (most recent call last):
+        RuntimeError: ...
         """
-        merged_path = os.path.join(self.path, relative)
-        if merged_path.startswith(self.path):
-            return merged_path
-        raise RuntimeError(f'invalid path, join {self.path} with {relative}')
+        joined_path = os.path.normpath(os.path.join(self.path, path))
+        if not joined_path.startswith(self.path):
+            raise RuntimeError(f'invalid path, join {self.path} with {path}')
+        return joined_path
+
+    def assure_writable(self):
+        """assert write access on this volume.
+
+        :raise BackupDirError: when write access on volume is not given
+        :return: None
+
+        >>> import os, stat, tempfile
+        >>> from snapshotbackup.volume import BaseVolume
+        >>> with tempfile.TemporaryDirectory() as path:
+        ...     BaseVolume(path).assure_writable()
+        ...     os.chmod(path, stat.S_IRUSR)
+        ...     BaseVolume(path).assure_writable()
+        Traceback (most recent call last):
+        snapshotbackup.exceptions.BackupDirError: not writable ...
+        """
+        if not os.access(self.path, os.W_OK):
+            raise BackupDirError(f'not writable {self.path}', self.path)
 
     def lock(self):
         """lock sync dir.
@@ -70,15 +92,14 @@ class BtrfsVolume(BaseVolume):
     provides functions to interact with btrfs relative to given base dir.
     """
 
-    def __init__(self, path, assert_writable=False):
-        """check that `base_path` exists, is dir, is writable (optional) and is on a btrfs filesystem.
+    def __init__(self, path):
+        """check that `base_path` exists, is dir, and is on a btrfs filesystem.
 
         :param str path:
-        :param bool assert_writable: if `True` write access for current process will be checked
         :raise BackupDirNotFoundError: backup dir not found
         :raise BackupDirError: general error with meaningful message
 
-        >>> import os.path, stat, tempfile
+        >>> import os.path, tempfile
         >>> from snapshotbackup.volume import BtrfsVolume
         >>> with tempfile.TemporaryDirectory() as path:
         ...     BtrfsVolume(os.path.join(path, 'nope'))
@@ -90,11 +111,6 @@ class BtrfsVolume(BaseVolume):
         ...     BtrfsVolume(not_a_dir)
         Traceback (most recent call last):
         snapshotbackup.exceptions.BackupDirError: not a directory ...
-        >>> with tempfile.TemporaryDirectory() as path:
-        ...     os.chmod(path, stat.S_IRUSR)
-        ...     BtrfsVolume(path, assert_writable=True)
-        Traceback (most recent call last):
-        snapshotbackup.exceptions.BackupDirError: not writable ...
         """
         super().__init__(path)
 
@@ -104,14 +120,11 @@ class BtrfsVolume(BaseVolume):
         if not os.path.isdir(self.path):
             raise BackupDirError(f'not a directory {self.path}', self.path)
 
-        if assert_writable and not os.access(self.path, os.W_OK):
-            raise BackupDirError(f'not writable {self.path}', self.path)
-
         if not is_btrfs(self.path):
             raise BackupDirError(f'not a btrfs {self.path}', self.path)
 
     def create_subvolume(self, name):
-        """create subvolume `name` in `self.path`.
+        """create subvolume `name` in this volume.
 
         :param str name:
         :return: None
@@ -119,7 +132,7 @@ class BtrfsVolume(BaseVolume):
         create_subvolume(self._path_join(name))
 
     def delete_subvolume(self, name):
-        """delete subvolume `name` in `self.path`.
+        """delete subvolume `name` in this volume.
 
         :param str name:
         :return: None
@@ -127,7 +140,7 @@ class BtrfsVolume(BaseVolume):
         delete_subvolume(self._path_join(name))
 
     def make_snapshot(self, source, target, readonly=True):
-        """make snapshot from `source` in `self.path` to `target` in `self.path`.
+        """make snapshot `target` in this volume from `source` in this volume.
 
         :param str source:
         :param str target:

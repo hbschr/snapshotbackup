@@ -1,11 +1,10 @@
 import os
-import pytest
 import tempfile
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
-from snapshotbackup.worker import Backup, Worker
 from snapshotbackup.volume import BtrfsVolume
+from snapshotbackup.worker import Backup, Worker
 
 
 # worker
@@ -16,55 +15,53 @@ def test_worker_volume(_):
         assert isinstance(Worker(path).volume, BtrfsVolume)
 
 
+@patch('os.path.isdir')
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_assert_writable_default(mocked_volume):
+def test_worker_assert_syncdir_writable(_, __):
     with tempfile.TemporaryDirectory() as path:
-        Worker(path)
-        mocked_volume.assert_called_once()
-        _, kwargs = mocked_volume.call_args
-        assert kwargs.get('assert_writable') is False
+        worker = Worker(path)
+        worker._assert_syncdir()
+    worker.volume.assure_writable.assert_called_once()
+
+
+@patch('os.path.isdir')
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_assert_syncdir_noop(_, __):
+    with tempfile.TemporaryDirectory() as path:
+        worker = Worker(path)
+        worker._assert_syncdir()
+    worker.volume.create_subvolume.assert_not_called()
+    worker.volume.make_snapshot.assert_not_called()
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_assert_writable_true(mocked_volume):
+def test_worker_assert_syncdir_create(_):
     with tempfile.TemporaryDirectory() as path:
-        Worker(path, assert_writable=True)
-        _, kwargs = mocked_volume.call_args
-        assert kwargs.get('assert_writable') is True
-
-
-@patch('os.walk')
-@patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_assert_writable_implied_by_assert_syncdir(mocked_volume, _):
-    with tempfile.TemporaryDirectory() as path:
-        Worker(path, assert_syncdir=True)
-        _, kwargs = mocked_volume.call_args
-        assert kwargs.get('assert_writable') is True
-
-
-@patch('os.walk', return_value=[(None, (), None)])
-@patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_create_empty_sync(_, __):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path, assert_syncdir=True)
+        worker = Worker(path)
+        worker.get_backups = Mock(return_value=[])
+        worker._assert_syncdir()
     worker.volume.create_subvolume.assert_called_once()
     worker.volume.make_snapshot.assert_not_called()
 
 
-# creation of `Backup` wants a valid volume.path
-@pytest.mark.skip
-@patch('snapshotbackup.worker.is_btrfs', return_value=True)
-@patch('snapshotbackup.worker.create_subvolume')
-@patch('snapshotbackup.worker.make_snapshot')
-def test_worker_recover_sync_from_latest(mocked_make_snapshot, mocked_create_subvolume, _):
+# fixme: not tested if recovered from last backup
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_assert_syncdir_recover(_):
     with tempfile.TemporaryDirectory() as path:
-        os.mkdir(os.path.join(path, '1989-11-10T00+00'))
-        os.mkdir(os.path.join(path, '1989-11-09T00+00'))
-        Worker(path, assert_syncdir=True)
-    mocked_create_subvolume.assert_not_called()
-    mocked_make_snapshot.assert_called_once()
-    args, _ = mocked_make_snapshot.call_args
-    assert '1989-11-10T00+00' in args[0]
+        worker = Worker(path)
+        worker.get_backups = Mock()
+        worker._assert_syncdir()
+    worker.volume.create_subvolume.assert_not_called()
+    worker.volume.make_snapshot.assert_called_once()
+
+
+@patch('os.walk')
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_assert_syncdir_called_from_constructor(_, __):
+    with tempfile.TemporaryDirectory() as path:
+        worker = Worker(path, assert_syncdir=True)
+    worker.volume.create_subvolume.assert_called_once()
+    worker.volume.make_snapshot.assert_not_called()
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
