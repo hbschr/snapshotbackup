@@ -18,28 +18,25 @@ def test_worker_volume(_):
 @patch('os.path.isdir')
 @patch('snapshotbackup.worker.BtrfsVolume')
 def test_worker_assert_syncdir_writable(_, __):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path)
-        worker._assert_syncdir()
+    worker = Worker('/path')
+    worker._assert_syncdir()
     worker.volume.assure_writable.assert_called_once()
 
 
 @patch('os.path.isdir')
 @patch('snapshotbackup.worker.BtrfsVolume')
 def test_worker_assert_syncdir_noop(_, __):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path)
-        worker._assert_syncdir()
+    worker = Worker('/path')
+    worker._assert_syncdir()
     worker.volume.create_subvolume.assert_not_called()
     worker.volume.make_snapshot.assert_not_called()
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
 def test_worker_assert_syncdir_create(_):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path)
-        worker.get_backups = Mock(return_value=[])
-        worker._assert_syncdir()
+    worker = Worker('/path')
+    worker.get_backups = Mock(return_value=[])
+    worker._assert_syncdir()
     worker.volume.create_subvolume.assert_called_once()
     worker.volume.make_snapshot.assert_not_called()
 
@@ -47,10 +44,9 @@ def test_worker_assert_syncdir_create(_):
 # fixme: not tested if recovered from last backup
 @patch('snapshotbackup.worker.BtrfsVolume')
 def test_worker_assert_syncdir_recover(_):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path)
-        worker.get_backups = Mock()
-        worker._assert_syncdir()
+    worker = Worker('/path')
+    worker.get_backups = Mock()
+    worker._assert_syncdir()
     worker.volume.create_subvolume.assert_not_called()
     worker.volume.make_snapshot.assert_called_once()
 
@@ -58,28 +54,24 @@ def test_worker_assert_syncdir_recover(_):
 @patch('os.walk')
 @patch('snapshotbackup.worker.BtrfsVolume')
 def test_worker_assert_syncdir_called_from_constructor(_, __):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path, assert_syncdir=True)
+    worker = Worker('/path', assert_syncdir=True)
     worker.volume.create_subvolume.assert_called_once()
     worker.volume.make_snapshot.assert_not_called()
 
 
+@patch('os.path.isdir')
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_delete_subvolume(_):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path)
-        worker.volume.sync_path = os.path.join(path, 'sync')
-        os.mkdir(worker.volume.sync_path)
-        worker.delete_syncdir()
+def test_worker_delete_subvolume(_, __):
+    worker = Worker('/path')
+    worker.delete_syncdir()
     worker.volume.delete_subvolume.assert_called_once()
 
 
+@patch('os.path.isdir', return_value=False)
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_delete_subvolume_noop(_):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path)
-        worker.volume.sync_path = os.path.join(path, 'sync')
-        worker.delete_syncdir()
+def test_worker_delete_subvolume_noop(_, __):
+    worker = Worker('/path')
+    worker.delete_syncdir()
     worker.volume.delete_subvolume.assert_not_called()
 
 
@@ -100,9 +92,8 @@ def test_worker_get_backups(_):
 
 @patch('snapshotbackup.worker.BtrfsVolume')
 def test_worker_snapshot(_):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path)
-        worker.snapshot_sync()
+    worker = Worker('/path')
+    worker.snapshot_sync()
     worker.volume.make_snapshot.assert_called_once()
 
 
