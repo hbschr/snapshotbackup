@@ -13,7 +13,8 @@ lint:
 test:
 	pytest
 
-check: lint test
+check: lint test doc
+	$(MAKE) demo
 
 .PHONY: demo
 demo:
