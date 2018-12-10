@@ -19,8 +19,9 @@ _defaults = {
 def _parse_bool(line):
     """parse a string input to boolean.
 
-    :param line:
+    :param str line:
     :return bool:
+
     >>> from snapshotbackup.config import _parse_bool
     >>> _parse_bool('true') and _parse_bool('True') and _parse_bool('1')
     True
