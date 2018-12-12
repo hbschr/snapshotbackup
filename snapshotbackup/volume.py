@@ -1,7 +1,10 @@
+import logging
 import os
 
 from .exceptions import BackupDirError, BackupDirNotFoundError, LockedError
 from .subprocess import create_subvolume, delete_subvolume, is_btrfs, make_snapshot
+
+logger = logging.getLogger(__name__)
 
 _sync_dir = '.sync'
 _sync_lockfile = '.sync_lock'
@@ -51,13 +54,40 @@ class BaseVolume(object):
             raise RuntimeError(f'invalid path, join {self.path} with {path}')
         return joined_path
 
+    def assure_path(self):
+        """assert this volume's path exists and is dir.
+
+        :raise BackupDirNotFoundError: when this volume's path doesn't exist
+        :raise BackupDirError: when this volume's path isn't a directory
+        :return: None
+
+        >>> import os, tempfile
+        >>> from snapshotbackup.volume import BaseVolume
+        >>> with tempfile.TemporaryDirectory() as path:
+        ...     BaseVolume(path).assure_path()
+        ...     BaseVolume(os.path.join(path, 'nope')).assure_path()
+        Traceback (most recent call last):
+        snapshotbackup.exceptions.BackupDirNotFoundError: ...
+        >>> with tempfile.TemporaryDirectory() as path:
+        ...     not_a_dir = os.path.join(path, 'not_a_dir')
+        ...     open(not_a_dir, 'w').close()
+        ...     BaseVolume(not_a_dir).assure_path()
+        Traceback (most recent call last):
+        snapshotbackup.exceptions.BackupDirError: not a directory ...
+        """
+        if not os.path.exists(self.path):
+            raise BackupDirNotFoundError(self.path)
+        if not os.path.isdir(self.path):
+            raise BackupDirError(f'not a directory {self.path}', self.path)
+
     def assure_writable(self):
-        """assert write access on this volume.
+        """assert write access on this volume. checks from :func:`assure_path` are also performed.
 
         :raise BackupDirError: when write access on volume is not given
         :return: None
 
         >>> import os, stat, tempfile
+        >>> from unittest.mock import Mock
         >>> from snapshotbackup.volume import BaseVolume
         >>> with tempfile.TemporaryDirectory() as path:
         ...     BaseVolume(path).assure_writable()
@@ -65,7 +95,13 @@ class BaseVolume(object):
         ...     BaseVolume(path).assure_writable()
         Traceback (most recent call last):
         snapshotbackup.exceptions.BackupDirError: not writable ...
+        >>> with tempfile.TemporaryDirectory() as path:
+        ...     vol = BaseVolume(path)
+        ...     vol.assure_path = Mock()
+        ...     vol.assure_writable()
+        ...     vol.assure_path.assert_called_once()
         """
+        self.assure_path()
         if not os.access(self.path, os.W_OK):
             raise BackupDirError(f'not writable {self.path}', self.path)
 
@@ -86,39 +122,28 @@ class BaseVolume(object):
         """
         return Lock(self.path)
 
+    def setup(self):
+        """create directory for this volume, do nothing if directory already exists.
+
+        :return: None
+
+        >>> import tempfile
+        >>> from snapshotbackup.volume import BaseVolume
+        >>> with tempfile.TemporaryDirectory() as path:
+        ...     vol = BaseVolume(os.path.join(path, 'long', 'path'))
+        ...     assert not os.path.isdir(vol.path)
+        ...     vol.setup()
+        ...     assert os.path.isdir(vol.path)
+        >>> with tempfile.TemporaryDirectory() as path:
+        ...     BaseVolume(path).setup()
+        """
+        os.makedirs(self.path, exist_ok=True)
+
 
 class BtrfsVolume(BaseVolume):
     """represents a path on a btrfs volume.
     provides functions to interact with btrfs relative to given base dir.
     """
-
-    def __init__(self, path):
-        """check that `base_path` exists, is dir, and is on a btrfs filesystem.
-
-        :param str path:
-        :raise BackupDirNotFoundError: backup dir not found
-        :raise BackupDirError: general error with meaningful message
-
-        >>> import os.path, tempfile
-        >>> from snapshotbackup.volume import BtrfsVolume
-        >>> with tempfile.TemporaryDirectory() as path:
-        ...     BtrfsVolume(os.path.join(path, 'nope'))
-        Traceback (most recent call last):
-        snapshotbackup.exceptions.BackupDirNotFoundError: ...
-        >>> with tempfile.TemporaryDirectory() as path:
-        ...     not_a_dir = os.path.join(path, 'file')
-        ...     open(not_a_dir, 'w').close()
-        ...     BtrfsVolume(not_a_dir)
-        Traceback (most recent call last):
-        snapshotbackup.exceptions.BackupDirError: not a directory ...
-        """
-        super().__init__(path)
-
-        if not os.path.exists(self.path):
-            raise BackupDirNotFoundError(self.path)
-
-        if not os.path.isdir(self.path):
-            raise BackupDirError(f'not a directory {self.path}', self.path)
 
     def _assure_btrfs(self):
         """assert this volume is on a btrfs filesystem.

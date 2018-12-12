@@ -3,28 +3,13 @@ import pytest
 import tempfile
 from unittest.mock import patch
 
-from snapshotbackup.exceptions import BackupDirError, BackupDirNotFoundError
+from snapshotbackup.exceptions import BackupDirError
 from snapshotbackup.volume import BtrfsVolume
 
 
 def test_btrfs_volume():
     with tempfile.TemporaryDirectory() as path:
         BtrfsVolume(path)
-
-
-def test_btrfs_volume_no_path():
-    with tempfile.TemporaryDirectory() as path:
-        with pytest.raises(BackupDirNotFoundError):
-            BtrfsVolume(os.path.join(path, 'nope'))
-
-
-def test_btrfs_volume_no_dir():
-    with tempfile.TemporaryDirectory() as path:
-        not_a_dir = os.path.join(path, 'file')
-        open(not_a_dir, 'w').close()
-        with pytest.raises(BackupDirError) as excinfo:
-            BtrfsVolume(not_a_dir)
-        assert excinfo.value.message.startswith('not a directory')
 
 
 @patch('snapshotbackup.volume.is_btrfs')

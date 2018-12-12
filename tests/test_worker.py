@@ -105,6 +105,7 @@ def test_worker_get_backups(_):
         # make sure sync dir is ignored
         os.mkdir(worker.volume.sync_path)
         assert len(worker.get_backups()) == 0
+        worker.volume.assure_path.assert_called_once()
         os.mkdir(os.path.join(path, '1989-11-10T00+00'))
         assert len(worker.get_backups()) == 1
         os.mkdir(os.path.join(path, '1989-11-09T00+00'))

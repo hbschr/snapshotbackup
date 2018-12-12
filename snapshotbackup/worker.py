@@ -62,6 +62,13 @@ class Worker(object):
             except IndexError:
                 self.volume.create_subvolume(self.volume.sync_path)
 
+    def setup(self):
+        """
+
+        :return: None
+        """
+        self.volume.setup()
+
     def make_backup(self, source_dir, ignore, autodecay=False, autoprune=False, checksum=False, dry_run=False,
                     progress=False):
         """make a backup from given source.
@@ -95,6 +102,7 @@ class Worker(object):
         :return: list of backups in this backup directory
         :rtype: [snapshotbackup.backup.Backup]
         """
+        self.volume.assure_path()
         dirs = []
         for _root, _dirs, _files in os.walk(self.volume.path):
             dirs = [_dir for _dir in _dirs if is_timestamp(_dir)]

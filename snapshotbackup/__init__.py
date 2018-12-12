@@ -44,24 +44,6 @@ def list_backups(worker):
               f'\t{"decay candidate" if backup.decay else ""}')
 
 
-def setup_path(path):
-    """assert given path exists.
-
-    >>> import os.path, tempfile
-    >>> from snapshotbackup import setup_path
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     newdir = os.path.join(path, 'long', 'path')
-    ...     setup_path(newdir)
-    ...     os.path.isdir(newdir)
-    True
-
-    :param str path:
-    :return: None
-    """
-    logger.info(f'setup path `{path}`')
-    os.makedirs(path, exist_ok=True)
-
-
 def _exit(app, error_message=None):
     """log and exit.
 
@@ -120,11 +102,11 @@ def main(app):
 
     _config = app.config
     try:
-        if app.args.action in ['s', 'setup']:
-            setup_path(_config['backups'])
         worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
                         retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
-        if app.args.action in ['b', 'backup']:
+        if app.args.action in ['s', 'setup']:
+            worker.setup()
+        elif app.args.action in ['b', 'backup']:
             worker.make_backup(app.args.source or _config['source'], _config['ignore'], autodecay=_config['autodecay'],
                                autoprune=_config['autoprune'], checksum=app.args.checksum, dry_run=app.args.dry_run,
                                progress=app.args.progress)
@@ -144,8 +126,8 @@ def main(app):
                 app.exit('to delete all backups you must also give argument `--delete`')
         elif app.args.action in ['clean']:
             worker.delete_syncdir()
-        # else:
-        #     app.exit(f'unknown command `{app.args.action}`')
+        else:
+            app.exit(f'unknown command `{app.args.action}`')
     except SourceNotReachableError as e:
         app.exit(f'source dir `{e.path}` not found, is it mounted?')
     except BackupDirNotFoundError as e:
