@@ -6,8 +6,7 @@ from snapshotbackup.volume import BtrfsVolume
 from snapshotbackup.worker import Worker
 
 
-@patch('snapshotbackup.volume.is_btrfs', return_value=True)
-def test_worker_volume(_):
+def test_worker_volume():
     with tempfile.TemporaryDirectory() as path:
         assert isinstance(Worker(path).volume, BtrfsVolume)
 

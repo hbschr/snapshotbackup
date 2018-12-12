@@ -47,7 +47,7 @@ class BaseVolume(object):
         RuntimeError: ...
         """
         joined_path = os.path.normpath(os.path.join(self.path, path))
-        if not joined_path.startswith(self.path):
+        if not os.path.commonpath((self.path, joined_path)) == self.path:
             raise RuntimeError(f'invalid path, join {self.path} with {path}')
         return joined_path
 
@@ -120,6 +120,12 @@ class BtrfsVolume(BaseVolume):
         if not os.path.isdir(self.path):
             raise BackupDirError(f'not a directory {self.path}', self.path)
 
+    def _assure_btrfs(self):
+        """assert this volume is on a btrfs filesystem.
+
+        :raise BackupDirError: general error with meaningful message
+        :return: None
+        """
         if not is_btrfs(self.path):
             raise BackupDirError(f'not a btrfs {self.path}', self.path)
 
@@ -129,6 +135,7 @@ class BtrfsVolume(BaseVolume):
         :param str name:
         :return: None
         """
+        self._assure_btrfs()
         create_subvolume(self._path_join(name))
 
     def delete_subvolume(self, name):
@@ -137,6 +144,7 @@ class BtrfsVolume(BaseVolume):
         :param str name:
         :return: None
         """
+        self._assure_btrfs()
         delete_subvolume(self._path_join(name))
 
     def make_snapshot(self, source, target, readonly=True):
@@ -147,6 +155,7 @@ class BtrfsVolume(BaseVolume):
         :param bool readonly: snapshot will be readonly
         :return: None
         """
+        self._assure_btrfs()
         make_snapshot(self._path_join(source), self._path_join(target), readonly=readonly)
 
 
