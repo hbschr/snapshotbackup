@@ -1,14 +1,14 @@
 import os
-import tempfile
+import pytest
 from unittest.mock import patch, Mock
 
+from snapshotbackup.exceptions import SyncFailedError
 from snapshotbackup.volume import BtrfsVolume
 from snapshotbackup.worker import Worker
 
 
-def test_worker_volume():
-    with tempfile.TemporaryDirectory() as path:
-        assert isinstance(Worker(path).volume, BtrfsVolume)
+def test_worker_volume(tmpdir):
+    assert isinstance(Worker(tmpdir).volume, BtrfsVolume)
 
 
 @patch('os.path.isdir')
@@ -54,6 +54,15 @@ def test_worker_make_backup(mocked_rsync, mocked_reachable, _):
     worker.volume.make_snapshot.assert_called_once()
 
 
+@patch('snapshotbackup.worker.is_reachable')
+@patch('snapshotbackup.worker.rsync', side_effect=SyncFailedError('target', 1))
+def test_worker_make_backup_failed(_, __, tmpdir):
+    worker = Worker(tmpdir)
+    worker._assert_syncdir = Mock()
+    with pytest.raises(SyncFailedError):
+        worker.make_backup('source', ('ignore',))
+
+
 @patch('snapshotbackup.worker.BtrfsVolume')
 @patch('snapshotbackup.worker.is_reachable')
 @patch('snapshotbackup.worker.rsync')
@@ -80,6 +89,8 @@ def test_worker_make_backup_autodecay(_, __, ___):
     worker.prune_backups = Mock()
     worker.make_backup('source', ('ignore',), autodecay=True)
     worker.decay_backups.assert_called_once()
+    args, _ = worker.decay_backups.call_args
+    assert args[0]('backup') is True
     worker.prune_backups.assert_not_called()
 
 
@@ -94,22 +105,29 @@ def test_worker_make_backup_autoprune(_, __, ___):
     worker.make_backup('source', ('ignore',), autoprune=True)
     worker.decay_backups.assert_not_called()
     worker.prune_backups.assert_called_once()
+    args, _ = worker.prune_backups.call_args
+    assert args[0]('backup') is True
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_get_backups(_):
-    with tempfile.TemporaryDirectory() as path:
-        worker = Worker(path)
-        worker.volume.path = path
-        worker.volume.sync_path = os.path.join(path, 'sync')
-        # make sure sync dir is ignored
-        os.mkdir(worker.volume.sync_path)
-        assert len(worker.get_backups()) == 0
-        worker.volume.assure_path.assert_called_once()
-        os.mkdir(os.path.join(path, '1989-11-10T00+00'))
-        assert len(worker.get_backups()) == 1
-        os.mkdir(os.path.join(path, '1989-11-09T00+00'))
-        assert len(worker.get_backups()) == 2
+def test_worker_get_backups(_, tmpdir):
+    worker = Worker(tmpdir)
+    worker.volume.path = tmpdir
+    worker.volume.sync_path = os.path.join(tmpdir, 'sync')
+    # make sure sync dir is ignored
+    os.mkdir(worker.volume.sync_path)
+    assert len(worker.get_backups()) == 0
+    worker.volume.assure_path.assert_called_once()
+    os.mkdir(os.path.join(tmpdir, '1989-11-10T00+00'))
+    assert len(worker.get_backups()) == 1
+    os.mkdir(os.path.join(tmpdir, '1989-11-09T00+00'))
+    assert len(worker.get_backups()) == 2
+
+
+@patch('os.walk')
+def test_worker_get_backups_missing_branch(_, tmpdir):
+    worker = Worker(tmpdir)
+    assert len(worker.get_backups()) == 0
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
@@ -223,10 +241,9 @@ def test_worker_delete_syncdir(_, __):
     worker.volume.delete_subvolume.assert_called_once()
 
 
-@patch('os.path.isdir', return_value=False)
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_delete_syncdir_noop(_, __):
-    worker = Worker('/path')
+def test_worker_delete_syncdir_noop(_, tmpdir):
+    worker = Worker(tmpdir)
     worker.delete_syncdir()
     worker.volume.delete_subvolume.assert_not_called()
 

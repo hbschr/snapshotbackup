@@ -1,7 +1,6 @@
 import os
 import pytest
 import subprocess
-import tempfile
 from unittest.mock import patch
 
 import snapshotbackup.subprocess
@@ -44,9 +43,8 @@ def test_run_not_silent(_):
     assert 'stderr' not in kwargs
 
 
-def test_is_reachable():
-    with tempfile.TemporaryDirectory() as path:
-        snapshotbackup.subprocess.is_reachable(path)
+def test_is_reachable(tmpdir):
+    snapshotbackup.subprocess.is_reachable(str(tmpdir))
 
 
 @patch('snapshotbackup.subprocess.run')
@@ -58,12 +56,11 @@ def test_is_reachable_ssh(mocked_run):
     assert args[1] == 'user@host'
 
 
-def test_is_reachable_error():
-    with tempfile.TemporaryDirectory() as basepath:
-        path = os.path.join(basepath, 'nope')
-        with pytest.raises(snapshotbackup.exceptions.SourceNotReachableError) as excinfo:
-            snapshotbackup.subprocess.is_reachable(path)
-        assert excinfo.value.path == path
+def test_is_reachable_error(tmpdir):
+    path = os.path.join(tmpdir, 'nope')
+    with pytest.raises(snapshotbackup.exceptions.SourceNotReachableError) as excinfo:
+        snapshotbackup.subprocess.is_reachable(path)
+    assert excinfo.value.path == path
 
 
 @patch('subprocess.run')
