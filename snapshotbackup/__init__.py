@@ -111,10 +111,10 @@ class CliApp(object):
     args: argparse.Namespace
     """parsed command line arguments"""
 
-    config: dict
+    config: dict = {}
     """parsed config file"""
 
-    name: str
+    name: str = __name__
     """name of this app"""
 
     def __call__(self, name=sys.argv[0]):
@@ -172,7 +172,7 @@ class CliApp(object):
             self.exit('debugging doesn\'t go that far, remove one `-d`')
 
     def _parse_config(self):
-        """populate `self.config`. make sure to call this first before relying on proper `self.config`.
+        """populate `self.config`. make sure to call this first before relying on `self.config`.
 
         :return: None
         :exit: calls :func:`snapshotbackup.CliApp.exit` in case of error
@@ -203,8 +203,7 @@ class CliApp(object):
                                    autodecay=_config['autodecay'], autoprune=_config['autoprune'],
                                    checksum=self.args.checksum, dry_run=self.args.dry_run, progress=self.args.progress)
                 if not self.args.dry_run:
-                    send_notification(self.name, f'backup `{self.args.name}` finished',
-                                      notify_remote=_config['notify_remote'])
+                    self.notify(f'backup `{self.args.name}` finished')
             elif self.args.action in ['l', 'list']:
                 list_backups(worker)
             elif self.args.action in ['d', 'decay']:
@@ -233,6 +232,15 @@ class CliApp(object):
         except SyncFailedError as e:
             self.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
                       f'(rsync error {e.errno}, {e.error_message})')
+
+    def notify(self, message, error=False):
+        """display message via libnotify.
+
+        :param str message:
+        :param bool error:
+        :return: None
+        """
+        send_notification(self.name, message, error=error, notify_remote=self.config.get('notify_remote'))
 
     def exit(self, error_message=None):
         """log and exit.
@@ -264,7 +272,6 @@ class CliApp(object):
         if error_message is None:
             logger.info(f'`{self.args.name}` exit without errors')
             sys.exit()
-        send_notification(self.name, f'backup `{self.args.name}` failed with error:\n{error_message}', error=True,
-                          notify_remote=self.config['notify_remote'] if hasattr(self, 'config') else False)
+        self.notify(f'backup `{self.args.name}` failed with error:\n{error_message}', error=True)
         logger.error(f'`{self.args.name}` exit with error: {error_message}')
         sys.exit(1)
