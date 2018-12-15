@@ -120,7 +120,7 @@ class BaseVolume(object):
         Traceback (most recent call last):
         snapshotbackup.exceptions.LockedError: ...
         """
-        return Lock(self.path)
+        return Lock(self._path_join(_sync_lockfile))
 
     def setup(self):
         """create directory for this volume, do nothing if directory already exists.
@@ -195,38 +195,35 @@ class Lock(object):
     >>> import os.path
     >>> from snapshotbackup.volume import Lock
     >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(path):
+    ...     with Lock(os.path.join(path, 'lock')):
     ...         pass
     >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(path):
+    ...     with Lock(os.path.join(path, 'lock')):
     ...         pass
-    ...     with Lock(path):
+    ...     with Lock(os.path.join(path, 'lock')):
     ...         pass
     >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(path):
-    ...         with Lock(path):
+    ...     with Lock(os.path.join(path, 'lock')):
+    ...         with Lock(os.path.join(path, 'lock')):
     ...             pass
     Traceback (most recent call last):
     snapshotbackup.exceptions.LockedError: ...
     >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(os.path.join(path, 'nope')):
+    ...     with Lock(os.path.join(path, 'nope', 'lock')):
     ...         pass
     Traceback (most recent call last):
     FileNotFoundError: ...
     """
-    _dir: str
-    """full path to directory"""
 
     _lockfile: str
     """full path to the lockfile"""
 
-    def __init__(self, dir):
+    def __init__(self, lockfile):
         """initialize lock
 
-        :param str dir: path where lockfile shall be created
+        :param str lockfile: path to lockfile
         """
-        self._dir = os.path.abspath(dir)
-        self._lockfile = os.path.join(self._dir, _sync_lockfile)
+        self._lockfile = os.path.abspath(lockfile)
 
     def __enter__(self):
         """enter locked context: create lockfile or throw error"""
