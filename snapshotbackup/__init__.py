@@ -127,7 +127,7 @@ class CliApp(object):
     name: str = __name__
     """name of this app"""
 
-    def __call__(self, name=sys.argv[0], args=sys.argv[1:]):
+    def __call__(self, name=__name__, args=sys.argv[1:]):
         """entry point for this `CliApp`.
 
         :param str name:
