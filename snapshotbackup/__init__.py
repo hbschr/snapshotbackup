@@ -42,8 +42,8 @@ def list_backups(worker):
     """
     logger.info(f'list backups, {worker}')
     for backup in worker.get_backups():
-        retain_all = backup.is_inside_retain_all_interval
-        retain_daily = backup.is_inside_retain_daily_interval
+        retain_all = backup.is_retain_all
+        retain_daily = backup.is_retain_daily
         print(f'{backup.name}'
               f'\t{"retain_all" if retain_all else "retain_daily" if retain_daily else "        "}'
               f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'

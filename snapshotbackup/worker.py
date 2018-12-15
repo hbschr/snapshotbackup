@@ -45,7 +45,7 @@ class Worker(object):
 
     def __repr__(self):
         return f'Worker(path={self.volume.path}, decay_before={self.decay_before}), ' \
-               f'retain_all_after={self.retain_all_after}, retain_daily_after={self.retain_daily_after}'
+               f'retain_all_after={self.retain_all_after}, retain_daily_after={self.retain_daily_after})'
 
     def _assert_syncdir(self):
         """assert existence of syncdir, create if not present.
@@ -194,13 +194,13 @@ class Backup(object):
     False
     >>> b2.is_daily
     True
-    >>> b2.is_inside_retain_daily_interval
+    >>> b2.is_retain_daily
     True
     >>> b3.prune
     False
     >>> b3.is_daily
     True
-    >>> b3.is_inside_retain_all_interval
+    >>> b3.is_retain_all
     True
     >>> b0.decay
     True
@@ -223,10 +223,10 @@ class Backup(object):
     is_weekly: bool = False
     """if this backup is the last in its week"""
 
-    is_inside_retain_all_interval: bool
+    is_retain_all: bool
     """if this backup is inside the `retain_all` time interval"""
 
-    is_inside_retain_daily_interval: bool
+    is_retain_daily: bool
     """if this backup is inside the `retain_daily` time interval"""
 
     decay: bool = False
@@ -249,8 +249,8 @@ class Backup(object):
         self.name = name
         self.datetime = parse_timestamp(name)
         self.decay = self._is_before(decay_before)
-        self.is_inside_retain_all_interval = self._is_after_or_equal(retain_all_after)
-        self.is_inside_retain_daily_interval = self._is_after_or_equal(retain_daily_after)
+        self.is_retain_all = self._is_after_or_equal(retain_all_after)
+        self.is_retain_daily = self._is_after_or_equal(retain_daily_after)
         self.is_last = is_last
         if not previous:
             self.is_daily = True
@@ -259,6 +259,13 @@ class Backup(object):
             self.is_daily = not is_same_day(previous.datetime, self.datetime)
             self.is_weekly = not is_same_week(previous.datetime, self.datetime)
         self.prune = not self._retain()
+
+    def __repr__(self):
+        attributes = ', '.join((f'{_a}={getattr(self, _a)}' for _a in ('name', 'decay', 'prune', 'is_daily',
+                                                                       'is_weekly', 'is_last',
+                                                                       'is_retain_all',
+                                                                       'is_retain_daily')))
+        return f'Backup({attributes})'
 
     def _is_before(self, timestamp):
         """check if this backup completed before given timestamp.
@@ -283,8 +290,8 @@ class Backup(object):
         """
         if self.is_last:
             return True
-        if self.is_inside_retain_all_interval:
+        if self.is_retain_all:
             return True
-        if self.is_inside_retain_daily_interval:
+        if self.is_retain_daily:
             return self.is_daily
         return self.is_weekly
