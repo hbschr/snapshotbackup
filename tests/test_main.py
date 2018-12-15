@@ -1,3 +1,4 @@
+import argparse
 from unittest.mock import MagicMock, patch
 
 import snapshotbackup
@@ -13,11 +14,55 @@ def test_main():
     mockedApp().assert_called_once()
 
 
+def test_yes_no_prompt():
+    with patch('builtins.input', return_value='y'):
+        assert snapshotbackup._yes_no_prompt('message') is True
+    with patch('builtins.input', return_value='yes'):
+        assert snapshotbackup._yes_no_prompt('message') is True
+    with patch('builtins.input', return_value='Y'):
+        assert snapshotbackup._yes_no_prompt('message') is True
+    with patch('builtins.input', return_value='YES'):
+        assert snapshotbackup._yes_no_prompt('message') is True
+    with patch('builtins.input'):
+        assert snapshotbackup._yes_no_prompt('message') is False
+    with patch('builtins.input', return_value=''):
+        assert snapshotbackup._yes_no_prompt('message') is False
+    with patch('builtins.input', return_value='n'):
+        assert snapshotbackup._yes_no_prompt('message') is False
+    with patch('builtins.input', return_value='no'):
+        assert snapshotbackup._yes_no_prompt('message') is False
+
+
 def test_list_backups():
     mocked_worker = MagicMock()
     mocked_worker.get_backups.return_value = [MagicMock(), MagicMock()]
     list_backups(mocked_worker)
     mocked_worker.get_backups.assert_called_once()
+
+
+class TestApp(object):
+
+    app: snapshotbackup.CliApp
+
+    def setup(self):
+        self.app = snapshotbackup.CliApp()
+        self.app.args = argparse.Namespace()
+
+    @patch('snapshotbackup._yes_prompt')
+    @patch('snapshotbackup._yes_no_prompt')
+    def test_delete_backup_prompt(self, mocked_yes_no, mocked_yes):
+        self.app.args.yes = False
+        self.app.delete_backup_prompt('message')
+        mocked_yes.assert_not_called()
+        mocked_yes_no.assert_called_once()
+
+    @patch('snapshotbackup._yes_prompt')
+    @patch('snapshotbackup._yes_no_prompt')
+    def test_delete_backup_prompt_yes(self, mocked_yes_no, mocked_yes):
+        self.app.args.yes = True
+        self.app.delete_backup_prompt('message')
+        mocked_yes.assert_called_once()
+        mocked_yes_no.assert_not_called()
 
 
 @patch('snapshotbackup.send_notification')

@@ -116,6 +116,28 @@ class Worker(object):
                                   previous=previous, is_last=_index == len(dirs)))
         return backups
 
+    def delete_syncdir(self):
+        """deletes sync dir when found, otherwise nothing.
+
+        :return: None
+        """
+        logger.info(f'delete sync dir, {self}')
+        self.volume.assure_writable()
+        if os.path.isdir(self.volume.sync_path):
+            self.volume.delete_subvolume(self.volume.sync_path)
+
+    def destroy_volume(self, prompt):
+        """deletes all backups and the volume path. i repeat: deletes all data!
+
+        :return: None
+        """
+        logger.warning(f'delete all backups, {self}')
+        self.delete_syncdir()
+        for backup in self.get_backups():
+            if prompt(backup):
+                self.volume.delete_subvolume(backup.name)
+        os.rmdir(self.volume.path)
+
     def decay_backups(self, prompt):
         """delete all backups which are older than `decay` retention policy.
 
@@ -141,28 +163,6 @@ class Worker(object):
         for to_be_pruned in [_b.name for _b in backups if _b.prune]:
             if prompt(to_be_pruned):
                 self.volume.delete_subvolume(to_be_pruned)
-
-    def delete_syncdir(self):
-        """deletes sync dir when found, otherwise nothing.
-
-        :return: None
-        """
-        logger.info(f'delete sync dir, {self}')
-        self.volume.assure_writable()
-        if os.path.isdir(self.volume.sync_path):
-            self.volume.delete_subvolume(self.volume.sync_path)
-
-    def destroy_volume(self, prompt):
-        """deletes all backups and the volume path. i repeat: deletes all data!
-
-        :return: None
-        """
-        logger.warning(f'delete all backups, {self}')
-        self.delete_syncdir()
-        for backup in self.get_backups():
-            if prompt(backup):
-                self.volume.delete_subvolume(backup.name)
-        os.rmdir(self.volume.path)
 
 
 class Backup(object):

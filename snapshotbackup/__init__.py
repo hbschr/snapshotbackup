@@ -19,18 +19,27 @@ __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
 
 
-def _delete_volume_prompt_approve(name):
-    """
+def _yes_no_prompt(message):
+    """prints message, waits for user input and returns `True` if prompt was answered w/ "yes" or "y".
 
-    :param name:
+    :param str message:
     :return bool:
+    """
+    return input(f'{message} [y/N] ').lower() in ('y', 'yes')
 
-    >>> from snapshotbackup import _delete_volume_prompt_approve
-    >>> _delete_volume_prompt_approve('name')
-    delete name
+
+def _yes_prompt(message):
+    """prints message, exits w/ `True`.
+
+    :param str message:
+    :return bool: True
+
+    >>> from snapshotbackup import _yes_prompt
+    >>> _yes_prompt('message')
+    message
     True
     """
-    print(f'delete {name}')
+    print(message)
     return True
 
 
@@ -62,16 +71,15 @@ def _get_argument_parser():
     """
     argparser = argparse.ArgumentParser()
     argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd',
-                                              'delete', 'clean'],
+                                              'destroy', 'clean'],
                            help='setup backup path (`mkdir -p`), make backup, list backups, prune backups not '
-                                'held by retention policy, decay old backups, delete all backups or clean backup '
+                                'held by retention policy, decay old backups, destroy all backups or clean backup '
                                 'directory')
     argparser.add_argument('name', help='section name in config file')
     argparser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
                            help='use given config file')
     argparser.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used '
                                                                             'thrice')
-    argparser.add_argument('--delete', action='store_true', help='together w/ `delete` this will delete all backups')
     argparser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
     argparser.add_argument('-s', '--silent', action='store_true',
                            help='silent mode: log errors, warnings and `--debug` to journald instead of stdout '
@@ -82,6 +90,8 @@ def _get_argument_parser():
     argparser.add_argument('--dry-run', action='store_true', help='pass `--dry-run` to rsync and display rsync '
                                                                   'output, no changes are made on disk')
     argparser.add_argument('--source', help='use given path as source for backup, replaces `source` from config file')
+    argparser.add_argument('--yes', action='store_true', help='say yes to each question, allows non-interactive '
+                                                              'deletion (prune, decay, destroy)')
     argparser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
                            help='print version number and exit')
     return argparser
@@ -208,14 +218,11 @@ class CliApp(object):
             elif self.args.action in ['l', 'list']:
                 list_backups(worker)
             elif self.args.action in ['d', 'decay']:
-                worker.decay_backups(_delete_volume_prompt_approve)
+                worker.decay_backups(self.delete_backup_prompt)
             elif self.args.action in ['p', 'prune']:
-                worker.prune_backups(_delete_volume_prompt_approve)
-            elif self.args.action in ['delete']:
-                if self.args.delete:
-                    worker.destroy_volume(_delete_volume_prompt_approve)
-                else:
-                    self.exit('to delete all backups you must also give argument `--delete`')
+                worker.prune_backups(self.delete_backup_prompt)
+            elif self.args.action in ['destroy']:
+                worker.destroy_volume(self.delete_backup_prompt)
             elif self.args.action in ['clean']:
                 worker.delete_syncdir()
             else:
@@ -233,6 +240,14 @@ class CliApp(object):
         except SyncFailedError as e:
             self.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
                       f'(rsync error {e.errno}, {e.error_message})')
+
+    def delete_backup_prompt(self, backup_name):
+        """
+
+        :param snapshotbackup.worker.Backup backup_name:
+        :return bool:
+        """
+        return (_yes_prompt if self.args.yes else _yes_no_prompt)(f'delete {backup_name}')
 
     def notify(self, message, error=False):
         """display message via libnotify.

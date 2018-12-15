@@ -36,13 +36,13 @@ list:
 	$(script) $(opts) -c $(config) list demo
 
 prune:
-	$(script) $(opts) -c $(config) prune demo
+	$(script) $(opts) -c $(config) prune demo --yes
 
 decay:
-	$(script) $(opts) -c $(config) decay demo
+	$(script) $(opts) -c $(config) decay demo --yes
 
 delete:
-	$(script) $(opts) -c $(config) delete demo --delete
+	$(script) $(opts) -c $(config) destroy demo --yes
 
 test: mount-fs version setup backup sleep backup-checksum list prune decay delete clean
 
