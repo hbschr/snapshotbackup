@@ -117,16 +117,17 @@ class CliApp(object):
     name: str = __name__
     """name of this app"""
 
-    def __call__(self, name=sys.argv[0]):
+    def __call__(self, name=sys.argv[0], args=sys.argv[1:]):
         """entry point for this `CliApp`.
 
         :param str name:
+        :param list args:
         :return: None
         :exit: always calls :func:`snapshotbackup.CliApp.exit`
         """
         signal.signal(signal.SIGTERM, lambda signal, frame: self.exit('Terminated'))
         self.name = name
-        self.args = _get_argument_parser().parse_args()
+        self.args = _get_argument_parser().parse_args(args=args)
         try:
             self._configure_logger()
             logger.info(f'start `{self.args.name}` w/ pid `{os.getpid()}`')
