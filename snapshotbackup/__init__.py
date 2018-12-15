@@ -150,31 +150,25 @@ class CliApp(object):
             self.exit('uncaught exception')
         self.exit()
 
+    def _get_journald_handler(self):
+        """get logging handler for `journald`.
+
+        :raise ModuleNotFoundError: when module `systemd.journal` couldn't be imported
+        :return logging.Handler:
+        """
+        systemd_journal = importlib.import_module('systemd.journal')
+        return systemd_journal.JournalHandler(SYSLOG_IDENTIFIER=self.name)
+
     def _configure_logger(self):
         """
 
         :return: None
         :exit: calls :func:`snapshotbackup.CliApp.exit` in case of error
-
-        >>> from unittest.mock import Mock
-        >>> from snapshotbackup import CliApp
-        >>> app = Mock()
-        >>> CliApp._configure_logger(app)
-        >>> app.exit.assert_called_once()
-        >>> app = Mock()
-        >>> app.args.silent = False
-        >>> app.args.debug = 1
-        >>> CliApp._configure_logger(app)
-        >>> app.exit.assert_not_called()
-        >>> app = Mock()
-        >>> app.args.silent = False
-        >>> app.args.debug = 10
-        >>> CliApp._configure_logger(app)
-        >>> app.exit.assert_called_once()
         """
         try:
-            handlers = [importlib.import_module('systemd.journal').JournalHandler(SYSLOG_IDENTIFIER=self.name)] \
-                if self.args.silent else None
+            handlers = []
+            if self.args.silent:
+                handlers.append(self._get_journald_handler())
             level = (logging.WARNING, logging.INFO, logging.DEBUG, DEBUG_SHELL)[self.args.debug]
             logging.basicConfig(handlers=handlers, level=level)
         except ModuleNotFoundError as e:
@@ -196,6 +190,49 @@ class CliApp(object):
             self.exit(f'no configuration for `{e.section}` found')
         except TimestampParseError as e:
             self.exit(e)
+
+    def notify(self, message, error=False):
+        """display message via libnotify.
+
+        :param str message:
+        :param bool error:
+        :return: None
+        """
+        send_notification(self.name, message, error=error, notify_remote=self.config.get('notify_remote'))
+
+    def exit(self, error_message=None):
+        """log and exit.
+
+        >>> from unittest.mock import Mock
+        >>> from snapshotbackup import CliApp
+        >>> app = CliApp()
+        >>> app.name = 'application_name'
+        >>> app.args = Mock()
+        >>> app.args.name = 'backup_name'
+        >>> app.config = {'notify_remote': None}
+        >>> app.exit()
+        Traceback (most recent call last):
+        SystemExit
+        >>> try:
+        ...     app.exit()
+        ... except SystemExit as e:
+        ...     assert e.code is None
+        >>> try:
+        ...     app.exit('xxx')
+        ... except SystemExit as e:
+        ...     assert e.code == 1
+
+        :param str error_message: will be logged. changes exit status to `1`.
+        :return: this function never returns, it always exits
+        :exit 0: success
+        :exit 1: error
+        """
+        if error_message is None:
+            logger.info(f'`{self.args.name}` exit without errors')
+            sys.exit()
+        self.notify(f'backup `{self.args.name}` failed with error:\n{error_message}', error=True)
+        logger.error(f'`{self.args.name}` exit with error: {error_message}')
+        sys.exit(1)
 
     def _main(self):  # noqa: C901
         """
@@ -248,46 +285,3 @@ class CliApp(object):
         :return bool:
         """
         return (_yes_prompt if self.args.yes else _yes_no_prompt)(f'delete {backup_name}')
-
-    def notify(self, message, error=False):
-        """display message via libnotify.
-
-        :param str message:
-        :param bool error:
-        :return: None
-        """
-        send_notification(self.name, message, error=error, notify_remote=self.config.get('notify_remote'))
-
-    def exit(self, error_message=None):
-        """log and exit.
-
-        >>> from unittest.mock import Mock
-        >>> from snapshotbackup import CliApp
-        >>> app = CliApp()
-        >>> app.name = 'application_name'
-        >>> app.args = Mock()
-        >>> app.args.name = 'backup_name'
-        >>> app.config = {'notify_remote': None}
-        >>> app.exit()
-        Traceback (most recent call last):
-        SystemExit
-        >>> try:
-        ...     app.exit()
-        ... except SystemExit as e:
-        ...     assert e.code is None
-        >>> try:
-        ...     app.exit('xxx')
-        ... except SystemExit as e:
-        ...     assert e.code == 1
-
-        :param str error_message: will be logged. changes exit status to `1`.
-        :return: this function never returns, it always exits
-        :exit 0: success
-        :exit 1: error
-        """
-        if error_message is None:
-            logger.info(f'`{self.args.name}` exit without errors')
-            sys.exit()
-        self.notify(f'backup `{self.args.name}` failed with error:\n{error_message}', error=True)
-        logger.error(f'`{self.args.name}` exit with error: {error_message}')
-        sys.exit(1)

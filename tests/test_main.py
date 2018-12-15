@@ -1,5 +1,6 @@
 import argparse
-from unittest.mock import MagicMock, patch
+import pytest
+from unittest.mock import MagicMock, Mock, patch
 
 import snapshotbackup
 from snapshotbackup import list_backups
@@ -47,6 +48,51 @@ class TestApp(object):
     def setup(self):
         self.app = snapshotbackup.CliApp()
         self.app.args = argparse.Namespace()
+
+    @patch('importlib.import_module')
+    def test_get_journald_handler(self, mocked_systemd_journal):
+        handler = self.app._get_journald_handler()
+        assert handler._mock_name == mocked_systemd_journal.JournalHandler()._mock_name
+
+    @patch('importlib.import_module', side_effect=ModuleNotFoundError('message'))
+    def test_get_journald_handler_fail(self, _):
+        with pytest.raises(ModuleNotFoundError):
+            self.app._get_journald_handler()
+
+    @patch('logging.basicConfig')
+    def test_configure_logger(self, mocked_basic_config):
+        self.app.args.debug = 0
+        self.app.args.silent = False
+        self.app._configure_logger()
+        mocked_basic_config.assert_called_once()
+        _, kwargs = mocked_basic_config.call_args
+        assert isinstance(kwargs.get('handlers'), list) and len(kwargs.get('handlers')) == 0
+
+    @patch('logging.basicConfig')
+    def test_configure_logger_journald(self, mocked_basic_config):
+        self.app.args.debug = 0
+        self.app.args.silent = True
+        self.app._get_journald_handler = Mock()
+        self.app._configure_logger()
+        mocked_basic_config.assert_called_once()
+        _, kwargs = mocked_basic_config.call_args
+        assert isinstance(kwargs.get('handlers'), list) and len(kwargs.get('handlers')) == 1
+        assert kwargs.get('handlers')[0] == self.app._get_journald_handler()
+
+    def test_configure_logger_import_fail(self):
+        self.app.args.debug = 0
+        self.app.args.silent = True
+        self.app._get_journald_handler = Mock(side_effect=ModuleNotFoundError('message'))
+        self.app.exit = Mock()
+        self.app._configure_logger()
+        self.app.exit.assert_called_once()
+
+    def test_configure_logger_debug_level_fail(self):
+        self.app.args.debug = 10
+        self.app.args.silent = False
+        self.app.exit = Mock()
+        self.app._configure_logger()
+        self.app.exit.assert_called_once()
 
     @patch('snapshotbackup._yes_prompt')
     @patch('snapshotbackup._yes_no_prompt')
