@@ -148,7 +148,21 @@ class CliApp(object):
         self._configure_logger()
         logger.info(f'start `{self.args.name}` w/ pid `{os.getpid()}`')
         self._parse_config()
-        self._main()
+        try:
+            self._main()
+        except SourceNotReachableError as e:
+            self.exit(f'source dir `{e.path}` not found, is it mounted?')
+        except BackupDirNotFoundError as e:
+            self.exit(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
+        except BackupDirError as e:
+            self.exit(e)
+        except CommandNotFoundError as e:
+            self.exit(f'command `{e.command}` not found, mayhap missing software?')
+        except LockedError as e:
+            self.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
+        except SyncFailedError as e:
+            self.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
+                      f'(rsync error {e.errno}, {e.error_message})')
         self.exit()
 
     def _get_journald_handler(self):
@@ -235,49 +249,35 @@ class CliApp(object):
         logger.error(f'`{self.args.name}` exit with error: {error_message}')
         sys.exit(1)
 
-    def _main(self):  # noqa: C901
+    def _main(self):
         """
 
         :return: None
         :exit: calls :func:`snapshotbackup.CliApp.exit` in case of error
         """
         _config = self.config
-        try:
-            worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
-                            retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
-            if self.args.action in ['s', 'setup']:
-                worker.setup()
-            elif self.args.action in ['b', 'backup']:
-                worker.make_backup(self.args.source or _config['source'], _config['ignore'],
-                                   autodecay=_config['autodecay'], autoprune=_config['autoprune'],
-                                   checksum=self.args.checksum, dry_run=self.args.dry_run, progress=self.args.progress)
-                if not self.args.dry_run:
-                    self.notify(f'backup `{self.args.name}` finished')
-            elif self.args.action in ['l', 'list']:
-                list_backups(worker)
-            elif self.args.action in ['d', 'decay']:
-                worker.decay_backups(self.delete_backup_prompt)
-            elif self.args.action in ['p', 'prune']:
-                worker.prune_backups(self.delete_backup_prompt)
-            elif self.args.action in ['destroy']:
-                worker.destroy_volume(self.delete_backup_prompt)
-            elif self.args.action in ['clean']:
-                worker.delete_syncdir()
-            else:
-                self.exit(f'unknown command `{self.args.action}`')
-        except SourceNotReachableError as e:
-            self.exit(f'source dir `{e.path}` not found, is it mounted?')
-        except BackupDirNotFoundError as e:
-            self.exit(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
-        except BackupDirError as e:
-            self.exit(e)
-        except CommandNotFoundError as e:
-            self.exit(f'command `{e.command}` not found, mayhap missing software?')
-        except LockedError as e:
-            self.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
-        except SyncFailedError as e:
-            self.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
-                      f'(rsync error {e.errno}, {e.error_message})')
+        worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
+                        retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
+        if self.args.action in ['s', 'setup']:
+            worker.setup()
+        elif self.args.action in ['b', 'backup']:
+            worker.make_backup(self.args.source or _config['source'], _config['ignore'],
+                               autodecay=_config['autodecay'], autoprune=_config['autoprune'],
+                               checksum=self.args.checksum, dry_run=self.args.dry_run, progress=self.args.progress)
+            if not self.args.dry_run:
+                self.notify(f'backup `{self.args.name}` finished')
+        elif self.args.action in ['l', 'list']:
+            list_backups(worker)
+        elif self.args.action in ['d', 'decay']:
+            worker.decay_backups(self.delete_backup_prompt)
+        elif self.args.action in ['p', 'prune']:
+            worker.prune_backups(self.delete_backup_prompt)
+        elif self.args.action in ['destroy']:
+            worker.destroy_volume(self.delete_backup_prompt)
+        elif self.args.action in ['clean']:
+            worker.delete_syncdir()
+        else:
+            self.exit(f'unknown command `{self.args.action}`')
 
     def delete_backup_prompt(self, backup_name):
         """
