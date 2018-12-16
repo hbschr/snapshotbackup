@@ -141,7 +141,7 @@ class CliApp(object):
         :param str name:
         :param list args:
         :return: None
-        :exit: always calls :func:`snapshotbackup.CliApp.exit`
+        :exit: calls :func:`snapshotbackup.CliApp.exit` in case of error
         """
         self.name = name
         self.args = _get_argument_parser().parse_args(args=args)
@@ -163,7 +163,7 @@ class CliApp(object):
         except SyncFailedError as e:
             self.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
                       f'(rsync error {e.errno}, {e.error_message})')
-        self.exit()
+        logger.info(f'`{self.args.name}` exit without errors')
 
     def _get_journald_handler(self):
         """get logging handler for `journald`.
