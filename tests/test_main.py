@@ -32,17 +32,17 @@ class Test_main(object):
         assert _signal == signal.SIGTERM
         assert callable(_handler)
         _handler('signal', 'frame')
-        mocked_App().exit.assert_called_once()
+        mocked_App().abort.assert_called_once()
 
     @patch('snapshotbackup.CliApp', return_value=Mock(side_effect=KeyboardInterrupt()))
     def test_main_keyboard_interrupt(self, mockedApp):
         snapshotbackup.main()
-        mockedApp().exit.assert_called_once()
+        mockedApp().abort.assert_called_once()
 
     @patch('snapshotbackup.CliApp', return_value=Mock(side_effect=Exception('error')))
     def test_main_catchall_exceptions(self, mockedApp):
         snapshotbackup.main()
-        mockedApp().exit.assert_called_once()
+        mockedApp().abort.assert_called_once()
 
 
 def test_yes_no_prompt():
@@ -113,16 +113,16 @@ class TestApp(object):
         self.app.args.debug = 0
         self.app.args.silent = True
         self.app._get_journald_handler = Mock(side_effect=ModuleNotFoundError('message'))
-        self.app.exit = Mock()
+        self.app.abort = Mock()
         self.app._configure_logger()
-        self.app.exit.assert_called_once()
+        self.app.abort.assert_called_once()
 
     def test_configure_logger_debug_level_fail(self):
         self.app.args.debug = 10
         self.app.args.silent = False
-        self.app.exit = Mock()
+        self.app.abort = Mock()
         self.app._configure_logger()
-        self.app.exit.assert_called_once()
+        self.app.abort.assert_called_once()
 
     @patch('snapshotbackup._yes_prompt')
     @patch('snapshotbackup._yes_no_prompt')

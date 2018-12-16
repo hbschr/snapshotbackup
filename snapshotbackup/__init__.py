@@ -105,14 +105,14 @@ def main():
     :return: None
     """
     app = CliApp()
-    signal.signal(signal.SIGTERM, lambda signal, frame: app.exit('Terminated'))
+    signal.signal(signal.SIGTERM, lambda signal, frame: app.abort('Terminated'))
     try:
         app()
     except KeyboardInterrupt:
-        app.exit('KeyboardInterrupt')
+        app.abort('KeyboardInterrupt')
     except Exception as e:
         logger.exception(e)
-        app.exit('uncaught exception')
+        app.abort('uncaught exception')
 
 
 # decorators break doctests
@@ -151,18 +151,18 @@ class CliApp(object):
         try:
             self._main()
         except SourceNotReachableError as e:
-            self.exit(f'source dir `{e.path}` not found, is it mounted?')
+            self.abort(f'source dir `{e.path}` not found, is it mounted?')
         except BackupDirNotFoundError as e:
-            self.exit(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
+            self.abort(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
         except BackupDirError as e:
-            self.exit(e)
+            self.abort(e)
         except CommandNotFoundError as e:
-            self.exit(f'command `{e.command}` not found, mayhap missing software?')
+            self.abort(f'command `{e.command}` not found, mayhap missing software?')
         except LockedError as e:
-            self.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
+            self.abort(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
         except SyncFailedError as e:
-            self.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
-                      f'(rsync error {e.errno}, {e.error_message})')
+            self.abort(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
+                       f'(rsync error {e.errno}, {e.error_message})')
         logger.info(f'`{self.args.name}` exit without errors')
 
     def _get_journald_handler(self):
@@ -187,9 +187,9 @@ class CliApp(object):
             level = (logging.WARNING, logging.INFO, logging.DEBUG, DEBUG_SHELL)[self.args.debug]
             logging.basicConfig(handlers=handlers, level=level)
         except ModuleNotFoundError as e:
-            self.exit(f'dependency for optional feature not found, missing module: {e.name}')
+            self.abort(f'dependency for optional feature not found, missing module: {e.name}')
         except IndexError:
-            self.exit('debugging doesn\'t go that far, remove one `-d`')
+            self.abort('debugging doesn\'t go that far, remove one `-d`')
 
     def _parse_config(self):
         """populate `self.config`. make sure to call this first before relying on `self.config`.
@@ -200,11 +200,11 @@ class CliApp(object):
         try:
             self.config = parse_config(self.args.name, filepath=self.args.config)
         except FileNotFoundError as e:
-            self.exit(f'configuration file `{e.filename}` not found')
+            self.abort(f'configuration file `{e.filename}` not found')
         except configparser.NoSectionError as e:
-            self.exit(f'no configuration for `{e.section}` found')
+            self.abort(f'no configuration for `{e.section}` found')
         except TimestampParseError as e:
-            self.exit(e)
+            self.abort(e)
 
     def notify(self, message, error=False):
         """display message via libnotify.
@@ -215,8 +215,8 @@ class CliApp(object):
         """
         send_notification(self.name, message, error=error, notify_remote=self.config.get('notify_remote'))
 
-    def exit(self, error_message=None):
-        """log and exit.
+    def abort(self, error_message):
+        """log, notify and exit.
 
         >>> from unittest.mock import Mock
         >>> from snapshotbackup import CliApp
@@ -225,26 +225,15 @@ class CliApp(object):
         >>> app.args = Mock()
         >>> app.args.name = 'backup_name'
         >>> app.config = {'notify_remote': None}
-        >>> app.exit()
-        Traceback (most recent call last):
-        SystemExit
         >>> try:
-        ...     app.exit()
-        ... except SystemExit as e:
-        ...     assert e.code is None
-        >>> try:
-        ...     app.exit('xxx')
+        ...     app.abort('xxx')
         ... except SystemExit as e:
         ...     assert e.code == 1
 
-        :param str error_message: will be logged. changes exit status to `1`.
+        :param str error_message: will be logged and notified
         :return: this function never returns, it always exits
-        :exit 0: success
         :exit 1: error
         """
-        if error_message is None:
-            logger.info(f'`{self.args.name}` exit without errors')
-            sys.exit()
         self.notify(f'backup `{self.args.name}` failed with error:\n{error_message}', error=True)
         logger.error(f'`{self.args.name}` exit with error: {error_message}')
         sys.exit(1)
@@ -277,7 +266,7 @@ class CliApp(object):
         elif self.args.action in ['clean']:
             worker.delete_syncdir()
         else:
-            self.exit(f'unknown command `{self.args.action}`')
+            self.abort(f'unknown command `{self.args.action}`')
 
     def delete_backup_prompt(self, backup_name):
         """
