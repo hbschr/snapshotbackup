@@ -99,12 +99,20 @@ def _get_argument_parser():
 
 def main():
     """entry function for setuptools' `console_scripts` entry point.
-    it initializes and runs :class:`snapshotbackup.CliApp`.
+    setups process logic (signal handling, logging of uncaught exceptions) and
+    initializes and runs :class:`snapshotbackup.CliApp`.
 
     :return: None
     """
     app = CliApp()
-    app()
+    signal.signal(signal.SIGTERM, lambda signal, frame: app.exit('Terminated'))
+    try:
+        app()
+    except KeyboardInterrupt:
+        app.exit('KeyboardInterrupt')
+    except Exception as e:
+        logger.exception(e)
+        app.exit('uncaught exception')
 
 
 # decorators break doctests
@@ -135,19 +143,12 @@ class CliApp(object):
         :return: None
         :exit: always calls :func:`snapshotbackup.CliApp.exit`
         """
-        signal.signal(signal.SIGTERM, lambda signal, frame: self.exit('Terminated'))
         self.name = name
         self.args = _get_argument_parser().parse_args(args=args)
-        try:
-            self._configure_logger()
-            logger.info(f'start `{self.args.name}` w/ pid `{os.getpid()}`')
-            self._parse_config()
-            self._main()
-        except KeyboardInterrupt:
-            self.exit('KeyboardInterrupt')
-        except Exception as e:
-            logger.exception(e)
-            self.exit('uncaught exception')
+        self._configure_logger()
+        logger.info(f'start `{self.args.name}` w/ pid `{os.getpid()}`')
+        self._parse_config()
+        self._main()
         self.exit()
 
     def _get_journald_handler(self):

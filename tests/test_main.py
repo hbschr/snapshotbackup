@@ -1,18 +1,48 @@
 import argparse
 import pytest
+import signal
 from unittest.mock import MagicMock, Mock, patch
 
 import snapshotbackup
 from snapshotbackup import list_backups
 
 
-def test_main():
-    assert 'main' in dir(snapshotbackup)
-    assert callable(snapshotbackup.main)
-    with patch('snapshotbackup.CliApp') as mockedApp:
+class Test_main(object):
+
+    @pytest.fixture(autouse=True)
+    def reset_sigterm_handler(self):
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+    @patch('snapshotbackup.CliApp')
+    def test_main(self, mocked_App):
+        assert 'main' in dir(snapshotbackup)
+        assert callable(snapshotbackup.main)
         snapshotbackup.main()
-    mockedApp.assert_called_once()
-    mockedApp().assert_called_once()
+        mocked_App.assert_called_once()
+        mocked_App().assert_called_once()
+
+    @patch('signal.signal')
+    @patch('snapshotbackup.CliApp')
+    def test_main_signal_handler(self, mocked_App, mocked_signal):
+        snapshotbackup.main()
+        mocked_signal.assert_called_once()
+        args, _ = mocked_signal.call_args
+        assert len(args) == 2
+        _signal, _handler = args
+        assert _signal == signal.SIGTERM
+        assert callable(_handler)
+        _handler('signal', 'frame')
+        mocked_App().exit.assert_called_once()
+
+    @patch('snapshotbackup.CliApp', return_value=Mock(side_effect=KeyboardInterrupt()))
+    def test_main_keyboard_interrupt(self, mockedApp):
+        snapshotbackup.main()
+        mockedApp().exit.assert_called_once()
+
+    @patch('snapshotbackup.CliApp', return_value=Mock(side_effect=Exception('error')))
+    def test_main_catchall_exceptions(self, mockedApp):
+        snapshotbackup.main()
+        mockedApp().exit.assert_called_once()
 
 
 def test_yes_no_prompt():
