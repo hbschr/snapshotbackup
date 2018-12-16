@@ -39,9 +39,11 @@ class Test_main(object):
         snapshotbackup.main()
         mockedApp().abort.assert_called_once()
 
+    @patch('snapshotbackup.logger')
     @patch('snapshotbackup.CliApp', return_value=Mock(side_effect=Exception('error')))
-    def test_main_catchall_exceptions(self, mockedApp):
+    def test_main_catchall_exceptions(self, mockedApp, mocked_logger):
         snapshotbackup.main()
+        mocked_logger.exception.assert_called_once()
         mockedApp().abort.assert_called_once()
 
 
