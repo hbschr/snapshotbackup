@@ -179,9 +179,9 @@ class CliApp(object):
         :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
         """
         try:
-            handlers = []
+            handlers = None
             if self.args.silent:
-                handlers.append(self._get_journald_handler())
+                handlers = [self._get_journald_handler()]
             level = (logging.WARNING, logging.INFO, logging.DEBUG, DEBUG_SHELL)[self.args.debug]
             logging.basicConfig(handlers=handlers, level=level)
         except ModuleNotFoundError as e:
