@@ -1,4 +1,3 @@
-import argparse
 import pytest
 import signal
 from unittest.mock import MagicMock, Mock, patch
@@ -79,7 +78,6 @@ class TestApp(object):
 
     def setup(self):
         self.app = snapshotbackup.CliApp()
-        self.app.args = argparse.Namespace()
 
     @patch('importlib.import_module')
     def test_get_journald_handler(self, mocked_systemd_journal):
@@ -118,21 +116,13 @@ class TestApp(object):
         self.app._configure_logger(10, False)
         self.app.abort.assert_called_once()
 
-    @patch('snapshotbackup._yes_prompt')
-    @patch('snapshotbackup._yes_no_prompt')
-    def test_delete_backup_prompt(self, mocked_yes_no, mocked_yes):
-        self.app.args.yes = False
-        self.app.delete_backup_prompt('message')
-        mocked_yes.assert_not_called()
-        mocked_yes_no.assert_called_once()
-
-    @patch('snapshotbackup._yes_prompt')
-    @patch('snapshotbackup._yes_no_prompt')
-    def test_delete_backup_prompt_yes(self, mocked_yes_no, mocked_yes):
-        self.app.args.yes = True
-        self.app.delete_backup_prompt('message')
-        mocked_yes.assert_called_once()
-        mocked_yes_no.assert_not_called()
+    def test_delete_backup_prompt(self):
+        self.app.delete_prompt = Mock()
+        self.app.delete_backup_prompt('name')
+        self.app.delete_prompt.assert_called_once()
+        args, _ = self.app.delete_prompt.call_args
+        assert args[0].startswith('delete')
+        assert args[0].endswith('name')
 
 
 @patch('snapshotbackup.send_notification')

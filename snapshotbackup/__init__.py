@@ -5,7 +5,6 @@ import logging
 import os
 import signal
 import sys
-
 from abc import ABC, abstractmethod
 from pkg_resources import get_distribution
 
@@ -190,11 +189,14 @@ class BaseApp(ABC):
 class CliApp(BaseApp):
     """main cli application, provides job handling."""
 
-    args: argparse.Namespace
-    """parsed command line arguments"""
+    backup_name: str
+    """job name, corresponds to config file section name"""
 
     config: dict = {}
     """parsed config file"""
+
+    delete_prompt: callable
+    """prompt to use for deletion of backup snapshots"""
 
     def __call__(self, args=sys.argv[1:]):
         """entry point for this `CliApp`.
@@ -203,13 +205,15 @@ class CliApp(BaseApp):
         :return: None
         :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
         """
-        self.args = _get_argument_parser().parse_args(args=args)
-        self._configure_logger(self.args.debug, self.args.silent)
-        self.config = self._get_config(self.args.config, self.args.name)
-        if self.args.source:
-            self.config.update({'source': self.args.source})
+        args = _get_argument_parser().parse_args(args=args)
+        self._configure_logger(args.debug, args.silent)
+        self.backup_name = args.name
+        self.config = self._get_config(args.config, self.backup_name)
+        if args.source:
+            self.config.update({'source': args.source})
+        self.delete_prompt = _yes_prompt if args.yes else _yes_no_prompt
         try:
-            self._main(self.args.action, self.args.checksum, self.args.dry_run, self.args.progress)
+            self._main(args.action, args.checksum, args.dry_run, args.progress)
         except SourceNotReachableError as e:
             self.abort(f'source dir `{e.path}` not found, is it mounted?')
         except BackupDirNotFoundError as e:
@@ -240,8 +244,7 @@ class CliApp(BaseApp):
         >>> from snapshotbackup import CliApp
         >>> app = CliApp()
         >>> app.name = 'application_name'
-        >>> app.args = Mock()
-        >>> app.args.name = 'backup_name'
+        >>> app.backup_name = 'backup_name'
         >>> app.config = {'notify_remote': None}
         >>> try:
         ...     app.abort('xxx')
@@ -252,8 +255,8 @@ class CliApp(BaseApp):
         :return: this function never returns, it always exits
         :exit 1: error
         """
-        self.notify(f'backup `{self.args.name}` failed with error:\n{error_message}', error=True)
-        logger.error(f'`{self.args.name}` exit with error: {error_message}')
+        self.notify(f'backup `{self.backup_name}` failed with error:\n{error_message}', error=True)
+        logger.error(f'`{self.backup_name}` exit with error: {error_message}')
         sys.exit(1)
 
     def _main(self, action, checksum, dry_run, progress):
@@ -266,7 +269,7 @@ class CliApp(BaseApp):
         :return: None
         :raise NotImplementedError: in case of unknown action
         """
-        logger.info(f'start `{self.args.name}` w/ pid `{os.getpid()}`')
+        logger.info(f'start `{self.backup_name}` w/ pid `{os.getpid()}`')
         _config = self.config
         worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
                         retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
@@ -276,7 +279,7 @@ class CliApp(BaseApp):
             worker.make_backup(_config['source'], _config['ignore'], autodecay=_config['autodecay'],
                                autoprune=_config['autoprune'], checksum=checksum, dry_run=dry_run, progress=progress)
             if not dry_run:
-                self.notify(f'backup `{self.args.name}` finished')
+                self.notify(f'backup `{self.backup_name}` finished')
         elif action in ['l', 'list']:
             list_backups(worker)
         elif action in ['d', 'decay']:
@@ -289,12 +292,12 @@ class CliApp(BaseApp):
             worker.delete_syncdir()
         else:
             raise NotImplementedError(f'unknown command `{action}`')
-        logger.info(f'`{self.args.name}` exit without errors')
+        logger.info(f'`{self.backup_name}` exit without errors')
 
     def delete_backup_prompt(self, backup_name):
         """
 
-        :param snapshotbackup.worker.Backup backup_name:
+        :param str backup_name:
         :return bool:
         """
-        return (_yes_prompt if self.args.yes else _yes_no_prompt)(f'delete {backup_name}')
+        return self.delete_prompt(f'delete {backup_name}')
