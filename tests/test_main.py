@@ -98,7 +98,7 @@ class TestApp(object):
         self.app._configure_logger()
         mocked_basic_config.assert_called_once()
         _, kwargs = mocked_basic_config.call_args
-        assert isinstance(kwargs.get('handlers'), list) and len(kwargs.get('handlers')) == 0
+        assert kwargs.get('handlers') is None
 
     @patch('logging.basicConfig')
     def test_configure_logger_journald(self, mocked_basic_config):
