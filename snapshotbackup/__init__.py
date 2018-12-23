@@ -206,8 +206,10 @@ class CliApp(BaseApp):
         self.args = _get_argument_parser().parse_args(args=args)
         self._configure_logger(self.args.debug, self.args.silent)
         self.config = self._get_config(self.args.config, self.args.name)
+        if self.args.source:
+            self.config.update({'source': self.args.source})
         try:
-            self._main(self.args.action)
+            self._main(self.args.action, self.args.checksum, self.args.dry_run, self.args.progress)
         except SourceNotReachableError as e:
             self.abort(f'source dir `{e.path}` not found, is it mounted?')
         except BackupDirNotFoundError as e:
@@ -254,10 +256,13 @@ class CliApp(BaseApp):
         logger.error(f'`{self.args.name}` exit with error: {error_message}')
         sys.exit(1)
 
-    def _main(self, action):
+    def _main(self, action, checksum, dry_run, progress):
         """dispatch backup volume actions.
 
         :param str action: which command to execute, f.e. `backup`, `list`, `prune`, ...
+        :param bool checksum:
+        :param bool dry_run:
+        :param bool progress:
         :return: None
         :raise NotImplementedError: in case of unknown action
         """
@@ -268,10 +273,9 @@ class CliApp(BaseApp):
         if action in ['s', 'setup']:
             worker.setup()
         elif action in ['b', 'backup']:
-            worker.make_backup(self.args.source or _config['source'], _config['ignore'],
-                               autodecay=_config['autodecay'], autoprune=_config['autoprune'],
-                               checksum=self.args.checksum, dry_run=self.args.dry_run, progress=self.args.progress)
-            if not self.args.dry_run:
+            worker.make_backup(_config['source'], _config['ignore'], autodecay=_config['autodecay'],
+                               autoprune=_config['autoprune'], checksum=checksum, dry_run=dry_run, progress=progress)
+            if not dry_run:
                 self.notify(f'backup `{self.args.name}` finished')
         elif action in ['l', 'list']:
             list_backups(worker)
