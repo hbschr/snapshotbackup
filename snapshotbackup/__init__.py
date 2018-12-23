@@ -6,6 +6,7 @@ import os
 import signal
 import sys
 
+from abc import ABC, abstractmethod
 from pkg_resources import get_distribution
 
 from .notify import send_notification
@@ -115,53 +116,21 @@ def main():
         app.abort('uncaught exception')
 
 
-# decorators break doctests
-# def instance(constructor):
-#     return constructor()
-#
-#
-# @instance
-class CliApp(object):
+class BaseApp(ABC):
+    """base application provides low level app logic like logger and config file handling.
+    this is an abstract class, :func:`snapshotbackup.BaseApp.abort` has to implemented in subclass.
     """
-
-    """
-
-    args: argparse.Namespace
-    """parsed command line arguments"""
-
-    config: dict = {}
-    """parsed config file"""
 
     name: str = __name__
     """name of this app"""
 
-    def __call__(self, name=__name__, args=sys.argv[1:]):
-        """entry point for this `CliApp`.
+    def __init__(self, name=__name__):
+        """initialize an base app instance.
 
-        :param str name:
-        :param list args:
-        :return: None
-        :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
+        :param str name: name of this app instance
         """
         self.name = name
-        self.args = _get_argument_parser().parse_args(args=args)
-        self._configure_logger(self.args.debug, self.args.silent)
-        self.config = self._get_config(self.args.config, self.args.name)
-        try:
-            self._main(self.args.action)
-        except SourceNotReachableError as e:
-            self.abort(f'source dir `{e.path}` not found, is it mounted?')
-        except BackupDirNotFoundError as e:
-            self.abort(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
-        except BackupDirError as e:
-            self.abort(e)
-        except CommandNotFoundError as e:
-            self.abort(f'command `{e.command}` not found, mayhap missing software?')
-        except LockedError as e:
-            self.abort(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
-        except SyncFailedError as e:
-            self.abort(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
-                       f'(rsync error {e.errno}, {e.error_message})')
+        super().__init__()
 
     def _get_journald_handler(self):
         """get logging handler for `journald`.
@@ -178,7 +147,7 @@ class CliApp(object):
         :param int level: logging level, 0 `warning`, 1 `info`, 2 `debug`, 3 `debug_shell`
         :param bool journald: redirects log from `stdout` to `journald`
         :return: None
-        :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
+        :exit: calls :func:`snapshotbackup.BaseApp.abort` in case of error
         """
         try:
             handlers = None
@@ -197,7 +166,7 @@ class CliApp(object):
         :param str filepath: path to config file
         :param str section: section in ini file to use
         :return dict:
-        :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
+        :exit: calls :func:`snapshotbackup.BaseApp.abort` in case of error
         """
         try:
             return parse_config(filepath, section)
@@ -207,6 +176,51 @@ class CliApp(object):
             self.abort(f'no configuration for `{e.section}` found')
         except TimestampParseError as e:
             self.abort(e)
+
+    @abstractmethod
+    def abort(self, error_message):
+        """aborts execution of app with an error message.
+
+        :param str error_message:
+        :return: None
+        """
+        pass
+
+
+class CliApp(BaseApp):
+    """main cli application, provides job handling."""
+
+    args: argparse.Namespace
+    """parsed command line arguments"""
+
+    config: dict = {}
+    """parsed config file"""
+
+    def __call__(self, args=sys.argv[1:]):
+        """entry point for this `CliApp`.
+
+        :param list args:
+        :return: None
+        :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
+        """
+        self.args = _get_argument_parser().parse_args(args=args)
+        self._configure_logger(self.args.debug, self.args.silent)
+        self.config = self._get_config(self.args.config, self.args.name)
+        try:
+            self._main(self.args.action)
+        except SourceNotReachableError as e:
+            self.abort(f'source dir `{e.path}` not found, is it mounted?')
+        except BackupDirNotFoundError as e:
+            self.abort(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
+        except BackupDirError as e:
+            self.abort(e)
+        except CommandNotFoundError as e:
+            self.abort(f'command `{e.command}` not found, mayhap missing software?')
+        except LockedError as e:
+            self.abort(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
+        except SyncFailedError as e:
+            self.abort(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
+                       f'(rsync error {e.errno}, {e.error_message})')
 
     def notify(self, message, error=False):
         """display message via libnotify.
