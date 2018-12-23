@@ -65,8 +65,8 @@ def is_reachable(path):
     args.extend(['ls', path])
     try:
         run(*args)
-    except subprocess.CalledProcessError:
-        raise SourceNotReachableError(path)
+    except subprocess.CalledProcessError as e:
+        raise SourceNotReachableError(path) from e
 
 
 def rsync(source, target, exclude=(), checksum=False, progress=False, dry_run=False):
