@@ -19,6 +19,33 @@ __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
 
 
+argument_parser = argparse.ArgumentParser()
+argument_parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd',
+                                                'destroy', 'clean'],
+                             help='setup backup path (`mkdir -p`), make backup, list backups, prune backups not held '
+                                  'by retention policy, decay old backups, destroy all backups or clean backup '
+                                  'directory')
+argument_parser.add_argument('name', help='section name in config file')
+argument_parser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
+                             help='use given config file')
+argument_parser.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used '
+                                                                              'thrice')
+argument_parser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
+argument_parser.add_argument('-s', '--silent', action='store_true',
+                             help='silent mode: log errors, warnings and `--debug` to journald instead of stdout ('
+                                  'extra dependencies needed, install with `pip install snapshotbackup[journald]`)')
+argument_parser.add_argument('--checksum', action='store_true',
+                             help='detect changes by checksum instead of file size and modification time, '
+                                  'increases disk load significantly (triggers `rsync --checksum`)')
+argument_parser.add_argument('--dry-run', action='store_true', help='pass `--dry-run` to rsync and display rsync '
+                                                                    'output, no changes are made on disk')
+argument_parser.add_argument('--source', help='use given path as source for backup, replaces `source` from config file')
+argument_parser.add_argument('--yes', action='store_true', help='say yes to each question, allows non-interactive '
+                                                                'deletion (prune, decay, destroy)')
+argument_parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
+                             help='print version number and exit')
+
+
 def _yes_no_prompt(message):
     """prints message, waits for user input and returns `True` if prompt was answered w/ "yes" or "y".
 
@@ -58,43 +85,6 @@ def list_backups(worker):
               f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
               f'\t{"prune candidate" if backup.prune else ""}'
               f'\t{"decay candidate" if backup.decay else ""}')
-
-
-def _get_argument_parser():
-    """
-
-    :return argparse.ArgumentParser:
-
-    >>> import argparse
-    >>> from snapshotbackup import _get_argument_parser
-    >>> assert isinstance(_get_argument_parser(), argparse.ArgumentParser)
-    """
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd',
-                                              'destroy', 'clean'],
-                           help='setup backup path (`mkdir -p`), make backup, list backups, prune backups not '
-                                'held by retention policy, decay old backups, destroy all backups or clean backup '
-                                'directory')
-    argparser.add_argument('name', help='section name in config file')
-    argparser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
-                           help='use given config file')
-    argparser.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used '
-                                                                            'thrice')
-    argparser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
-    argparser.add_argument('-s', '--silent', action='store_true',
-                           help='silent mode: log errors, warnings and `--debug` to journald instead of stdout '
-                                '(extra dependencies needed, install with `pip install snapshotbackup[journald]`)')
-    argparser.add_argument('--checksum', action='store_true',
-                           help='detect changes by checksum instead of file size and modification time, '
-                                'increases disk load significantly (triggers `rsync --checksum`)')
-    argparser.add_argument('--dry-run', action='store_true', help='pass `--dry-run` to rsync and display rsync '
-                                                                  'output, no changes are made on disk')
-    argparser.add_argument('--source', help='use given path as source for backup, replaces `source` from config file')
-    argparser.add_argument('--yes', action='store_true', help='say yes to each question, allows non-interactive '
-                                                              'deletion (prune, decay, destroy)')
-    argparser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
-                           help='print version number and exit')
-    return argparser
 
 
 def main():
@@ -205,7 +195,7 @@ class CliApp(BaseApp):
         :return: None
         :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
         """
-        args = _get_argument_parser().parse_args(args=args)
+        args = argument_parser.parse_args(args=args)
         self._configure_logger(args.debug, args.silent)
         self.backup_name = args.name
         self.config = self._get_config(args.config, self.backup_name)
