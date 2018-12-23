@@ -56,10 +56,10 @@ class Worker(object):
         """
         self.volume.assure_writable()
         if not os.path.isdir(self.volume.sync_path):
-            try:
-                _last = self.get_backups().pop()
+            _last = self.get_last()
+            if _last:
                 self.volume.make_snapshot(_last.name, self.volume.sync_path, readonly=False)
-            except IndexError:
+            else:
                 self.volume.create_subvolume(self.volume.sync_path)
 
     def setup(self):
@@ -99,7 +99,7 @@ class Worker(object):
     def get_backups(self):
         """create list of all backups in this backup dir.
 
-        :return: list of backups in this backup directory
+        :return: list of backups in this volume
         :rtype: [snapshotbackup.backup.Backup]
         """
         self.volume.assure_path()
@@ -115,6 +115,17 @@ class Worker(object):
             backups.append(Backup(_dir, self.retain_all_after, self.retain_daily_after, self.decay_before,
                                   previous=previous, is_last=_index == len(dirs)))
         return backups
+
+    def get_last(self):
+        """returns latest backup of this volume
+
+        :return: latest backup or None
+        :rtype: snapshotbackup.backup.Backup
+        """
+        _list = self.get_backups()
+        if len(_list) == 0:
+            return None
+        return _list.pop()
 
     def delete_syncdir(self):
         """deletes sync dir when found, otherwise nothing.

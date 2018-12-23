@@ -4,7 +4,7 @@ from unittest.mock import patch, Mock
 
 from snapshotbackup.exceptions import SyncFailedError
 from snapshotbackup.volume import BtrfsVolume
-from snapshotbackup.worker import Worker
+from snapshotbackup.worker import Backup, Worker
 
 
 def test_worker_volume(tmpdir):
@@ -13,8 +13,8 @@ def test_worker_volume(tmpdir):
 
 @patch('os.path.isdir')
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_assert_syncdir_noop(_, __):
-    worker = Worker('/path')
+def test_worker_assert_syncdir_noop(_, __, tmpdir):
+    worker = Worker(tmpdir)
     worker._assert_syncdir()
     worker.volume.assure_writable.assert_called_once()
     worker.volume.create_subvolume.assert_not_called()
@@ -22,9 +22,9 @@ def test_worker_assert_syncdir_noop(_, __):
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_assert_syncdir_create(_):
-    worker = Worker('/path')
-    worker.get_backups = Mock(return_value=[])
+def test_worker_assert_syncdir_create(_, tmpdir):
+    worker = Worker(tmpdir)
+    worker.get_last = Mock(return_value=None)
     worker._assert_syncdir()
     worker.volume.create_subvolume.assert_called_once()
     worker.volume.make_snapshot.assert_not_called()
@@ -32,12 +32,14 @@ def test_worker_assert_syncdir_create(_):
 
 # fixme: not tested if recovered from last backup
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_assert_syncdir_recover(_):
-    worker = Worker('/path')
-    worker.get_backups = Mock()
+def test_worker_assert_syncdir_recover(_, tmpdir):
+    worker = Worker(tmpdir)
+    worker.get_last = Mock(return_value=Mock())
     worker._assert_syncdir()
     worker.volume.create_subvolume.assert_not_called()
     worker.volume.make_snapshot.assert_called_once()
+    _, kwargs = worker.volume.make_snapshot.call_args
+    assert kwargs.get('readonly') is False
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
@@ -113,9 +115,6 @@ def test_worker_make_backup_autoprune(_, __, ___):
 def test_worker_get_backups(_, tmpdir):
     worker = Worker(tmpdir)
     worker.volume.path = tmpdir
-    worker.volume.sync_path = os.path.join(tmpdir, 'sync')
-    # make sure sync dir is ignored
-    os.mkdir(worker.volume.sync_path)
     assert len(worker.get_backups()) == 0
     worker.volume.assure_path.assert_called_once()
     os.mkdir(os.path.join(tmpdir, '1989-11-10T00+00'))
@@ -128,6 +127,17 @@ def test_worker_get_backups(_, tmpdir):
 def test_worker_get_backups_missing_branch(_, tmpdir):
     worker = Worker(tmpdir)
     assert len(worker.get_backups()) == 0
+
+
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_get_last(_, tmpdir):
+    worker = Worker(tmpdir)
+    worker.volume.path = tmpdir
+    assert worker.get_last() is None
+    os.mkdir(os.path.join(tmpdir, '1989-11-09T00+00'))
+    last = worker.get_last()
+    assert isinstance(last, Backup)
+    assert last.name == '1989-11-09T00+00'
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
