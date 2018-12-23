@@ -93,37 +93,29 @@ class TestApp(object):
 
     @patch('logging.basicConfig')
     def test_configure_logger(self, mocked_basic_config):
-        self.app.args.debug = 0
-        self.app.args.silent = False
-        self.app._configure_logger()
+        self.app._configure_logger(0, False)
         mocked_basic_config.assert_called_once()
         _, kwargs = mocked_basic_config.call_args
         assert kwargs.get('handlers') is None
 
     @patch('logging.basicConfig')
     def test_configure_logger_journald(self, mocked_basic_config):
-        self.app.args.debug = 0
-        self.app.args.silent = True
         self.app._get_journald_handler = Mock()
-        self.app._configure_logger()
+        self.app._configure_logger(0, True)
         mocked_basic_config.assert_called_once()
         _, kwargs = mocked_basic_config.call_args
         assert isinstance(kwargs.get('handlers'), list) and len(kwargs.get('handlers')) == 1
         assert kwargs.get('handlers')[0] == self.app._get_journald_handler()
 
     def test_configure_logger_import_fail(self):
-        self.app.args.debug = 0
-        self.app.args.silent = True
         self.app._get_journald_handler = Mock(side_effect=ModuleNotFoundError('message'))
         self.app.abort = Mock()
-        self.app._configure_logger()
+        self.app._configure_logger(0, True)
         self.app.abort.assert_called_once()
 
     def test_configure_logger_debug_level_fail(self):
-        self.app.args.debug = 10
-        self.app.args.silent = False
         self.app.abort = Mock()
-        self.app._configure_logger()
+        self.app._configure_logger(10, False)
         self.app.abort.assert_called_once()
 
     @patch('snapshotbackup._yes_prompt')

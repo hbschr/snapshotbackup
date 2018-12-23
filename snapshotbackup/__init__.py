@@ -145,10 +145,10 @@ class CliApp(object):
         """
         self.name = name
         self.args = _get_argument_parser().parse_args(args=args)
-        self._configure_logger()
-        self._parse_config()
+        self._configure_logger(self.args.debug, self.args.silent)
+        self.config = self._get_config(self.args.config, self.args.name)
         try:
-            self._main()
+            self._main(self.args.action)
         except SourceNotReachableError as e:
             self.abort(f'source dir `{e.path}` not found, is it mounted?')
         except BackupDirNotFoundError as e:
@@ -172,31 +172,35 @@ class CliApp(object):
         systemd_journal = importlib.import_module('systemd.journal')
         return systemd_journal.JournalHandler(SYSLOG_IDENTIFIER=self.name)
 
-    def _configure_logger(self):
-        """
+    def _configure_logger(self, level, journald):
+        """configures python logger, aware of custom logging levels.
 
+        :param int level: logging level, 0 `warning`, 1 `info`, 2 `debug`, 3 `debug_shell`
+        :param bool journald: redirects log from `stdout` to `journald`
         :return: None
         :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
         """
         try:
             handlers = None
-            if self.args.silent:
+            if journald:
                 handlers = [self._get_journald_handler()]
-            level = (logging.WARNING, logging.INFO, logging.DEBUG, DEBUG_SHELL)[self.args.debug]
+            level = (logging.WARNING, logging.INFO, logging.DEBUG, DEBUG_SHELL)[level]
             logging.basicConfig(handlers=handlers, level=level)
         except ModuleNotFoundError as e:
             self.abort(f'dependency for optional feature not found, missing module: {e.name}')
         except IndexError:
             self.abort('debugging doesn\'t go that far, remove one `-d`')
 
-    def _parse_config(self):
+    def _get_config(self, filepath, section):
         """populate `self.config`. make sure to call this first before relying on `self.config`.
 
-        :return: None
+        :param str filepath: path to config file
+        :param str section: section in ini file to use
+        :return dict:
         :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
         """
         try:
-            self.config = parse_config(self.args.name, filepath=self.args.config)
+            return parse_config(filepath, section)
         except FileNotFoundError as e:
             self.abort(f'configuration file `{e.filename}` not found')
         except configparser.NoSectionError as e:
@@ -236,9 +240,10 @@ class CliApp(object):
         logger.error(f'`{self.args.name}` exit with error: {error_message}')
         sys.exit(1)
 
-    def _main(self):
-        """
+    def _main(self, action):
+        """dispatch backup volume actions.
 
+        :param str action: which command to execute, f.e. `backup`, `list`, `prune`, ...
         :return: None
         :raise NotImplementedError: in case of unknown action
         """
@@ -246,26 +251,26 @@ class CliApp(object):
         _config = self.config
         worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
                         retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
-        if self.args.action in ['s', 'setup']:
+        if action in ['s', 'setup']:
             worker.setup()
-        elif self.args.action in ['b', 'backup']:
+        elif action in ['b', 'backup']:
             worker.make_backup(self.args.source or _config['source'], _config['ignore'],
                                autodecay=_config['autodecay'], autoprune=_config['autoprune'],
                                checksum=self.args.checksum, dry_run=self.args.dry_run, progress=self.args.progress)
             if not self.args.dry_run:
                 self.notify(f'backup `{self.args.name}` finished')
-        elif self.args.action in ['l', 'list']:
+        elif action in ['l', 'list']:
             list_backups(worker)
-        elif self.args.action in ['d', 'decay']:
+        elif action in ['d', 'decay']:
             worker.decay_backups(self.delete_backup_prompt)
-        elif self.args.action in ['p', 'prune']:
+        elif action in ['p', 'prune']:
             worker.prune_backups(self.delete_backup_prompt)
-        elif self.args.action in ['destroy']:
+        elif action in ['destroy']:
             worker.destroy_volume(self.delete_backup_prompt)
-        elif self.args.action in ['clean']:
+        elif action in ['clean']:
             worker.delete_syncdir()
         else:
-            raise NotImplementedError(f'unknown command `{self.args.action}`')
+            raise NotImplementedError(f'unknown command `{action}`')
         logger.info(f'`{self.args.name}` exit without errors')
 
     def delete_backup_prompt(self, backup_name):

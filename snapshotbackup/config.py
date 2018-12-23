@@ -63,11 +63,11 @@ def _parse_ignore(line):
     return tuple(item.strip() for row in parser for item in row)
 
 
-def parse_config(section, filepath):
+def parse_config(filepath, section):
     """parse ini file and return dictionary for given section
 
-    :param str section: section in ini file to use
     :param str filepath: path to config file
+    :param str section: section in ini file to use
     :return dict:
     :raise FileNotFoundError: when config file cannot be found
     :raise configparser.NoSectionError: when given `section` is not found
