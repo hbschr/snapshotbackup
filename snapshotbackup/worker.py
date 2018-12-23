@@ -134,7 +134,7 @@ class Worker(object):
         logger.warning(f'delete all backups, {self}')
         self.delete_syncdir()
         for backup in self.get_backups():
-            if prompt(backup):
+            if prompt(backup.name):
                 self.volume.delete_subvolume(backup.name)
         os.rmdir(self.volume.path)
 
