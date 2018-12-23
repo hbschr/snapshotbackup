@@ -29,7 +29,7 @@ def _yes_no_prompt(message):
 
 
 def _yes_prompt(message):
-    """prints message, exits w/ `True`.
+    """prints message, returns `True`.
 
     :param str message:
     :return bool: True
@@ -141,12 +141,11 @@ class CliApp(object):
         :param str name:
         :param list args:
         :return: None
-        :exit: calls :func:`snapshotbackup.CliApp.exit` in case of error
+        :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
         """
         self.name = name
         self.args = _get_argument_parser().parse_args(args=args)
         self._configure_logger()
-        logger.info(f'start `{self.args.name}` w/ pid `{os.getpid()}`')
         self._parse_config()
         try:
             self._main()
@@ -163,7 +162,6 @@ class CliApp(object):
         except SyncFailedError as e:
             self.abort(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
                        f'(rsync error {e.errno}, {e.error_message})')
-        logger.info(f'`{self.args.name}` exit without errors')
 
     def _get_journald_handler(self):
         """get logging handler for `journald`.
@@ -178,7 +176,7 @@ class CliApp(object):
         """
 
         :return: None
-        :exit: calls :func:`snapshotbackup.CliApp.exit` in case of error
+        :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
         """
         try:
             handlers = []
@@ -195,7 +193,7 @@ class CliApp(object):
         """populate `self.config`. make sure to call this first before relying on `self.config`.
 
         :return: None
-        :exit: calls :func:`snapshotbackup.CliApp.exit` in case of error
+        :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
         """
         try:
             self.config = parse_config(self.args.name, filepath=self.args.config)
@@ -242,8 +240,9 @@ class CliApp(object):
         """
 
         :return: None
-        :exit: calls :func:`snapshotbackup.CliApp.exit` in case of error
+        :raise NotImplementedError: in case of unknown action
         """
+        logger.info(f'start `{self.args.name}` w/ pid `{os.getpid()}`')
         _config = self.config
         worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
                         retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
@@ -266,7 +265,8 @@ class CliApp(object):
         elif self.args.action in ['clean']:
             worker.delete_syncdir()
         else:
-            self.abort(f'unknown command `{self.args.action}`')
+            raise NotImplementedError(f'unknown command `{self.args.action}`')
+        logger.info(f'`{self.args.name}` exit without errors')
 
     def delete_backup_prompt(self, backup_name):
         """
