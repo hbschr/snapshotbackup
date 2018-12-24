@@ -6,12 +6,13 @@ from .timestamps import parse_human_readable_relative_dates
 
 
 _defaults = {
+    'ignore': '',
     'retain_all': '1 day',
     'retain_daily': '1 month',
     'decay': '1 year',
     'autodecay': '',
     'autoprune': '',
-    'ignore': '',
+    'silent_fail_threshold': '3 days',
     'notify_remote': '',
 }
 
@@ -85,5 +86,6 @@ def parse_config(filepath, section):
         'decay_before': parse_human_readable_relative_dates(config[section]['decay']),
         'autodecay': _parse_bool(config[section]['autodecay']),
         'autoprune': _parse_bool(config[section]['autoprune']),
+        'silent_fail_threshold': parse_human_readable_relative_dates(config[section]['silent_fail_threshold']),
         'notify_remote': config[section]['notify_remote'] or None,
     }

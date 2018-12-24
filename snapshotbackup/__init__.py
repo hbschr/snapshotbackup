@@ -188,6 +188,9 @@ class CliApp(BaseApp):
     delete_prompt: callable
     """prompt to use for deletion of backup snapshots"""
 
+    notify_errors: bool = True
+    """if `True` errors will be notified"""
+
     def __call__(self, args=sys.argv[1:]):
         """entry point for this `CliApp`.
 
@@ -245,7 +248,8 @@ class CliApp(BaseApp):
         :return: this function never returns, it always exits
         :exit 1: error
         """
-        self.notify(f'backup `{self.backup_name}` failed with error:\n{error_message}', error=True)
+        if self.notify_errors:
+            self.notify(f'backup `{self.backup_name}` failed with error:\n{error_message}', error=True)
         logger.error(f'`{self.backup_name}` exit with error: {error_message}')
         sys.exit(1)
 
@@ -266,6 +270,9 @@ class CliApp(BaseApp):
         if action in ['s', 'setup']:
             worker.setup()
         elif action in ['b', 'backup']:
+            _last = worker.get_last()
+            if _last and _last.is_after_or_equal(_config['silent_fail_threshold']):
+                self.notify_errors = False
             worker.make_backup(_config['source'], _config['ignore'], autodecay=_config['autodecay'],
                                autoprune=_config['autoprune'], checksum=checksum, dry_run=dry_run, progress=progress)
             if not dry_run:

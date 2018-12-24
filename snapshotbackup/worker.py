@@ -259,9 +259,9 @@ class Backup(object):
         """
         self.name = name
         self.datetime = parse_timestamp(name)
-        self.decay = self._is_before(decay_before)
-        self.is_retain_all = self._is_after_or_equal(retain_all_after)
-        self.is_retain_daily = self._is_after_or_equal(retain_daily_after)
+        self.decay = self.is_before(decay_before)
+        self.is_retain_all = self.is_after_or_equal(retain_all_after)
+        self.is_retain_daily = self.is_after_or_equal(retain_daily_after)
         self.is_last = is_last
         if not previous:
             self.is_daily = True
@@ -278,7 +278,7 @@ class Backup(object):
                                                                        'is_retain_daily')))
         return f'Backup({attributes})'
 
-    def _is_before(self, timestamp):
+    def is_before(self, timestamp):
         """check if this backup completed before given timestamp.
 
         :param datetime.datetime timestamp:
@@ -286,7 +286,7 @@ class Backup(object):
         """
         return timestamp > self.datetime
 
-    def _is_after_or_equal(self, timestamp):
+    def is_after_or_equal(self, timestamp):
         """check if this backup completed after given timestamp.
 
         :param datetime.datetime timestamp:
