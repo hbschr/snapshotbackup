@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 argument_parser = argparse.ArgumentParser()
-argument_parser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd',
-                                                'destroy', 'clean'],
+argument_parser.add_argument('command', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd',
+                                                 'destroy', 'clean'],
                              help='setup backup path (`mkdir -p`), make backup, list backups, prune backups not held '
                                   'by retention policy, decay old backups, destroy all backups or clean backup '
                                   'directory')
@@ -206,7 +206,7 @@ class CliApp(BaseApp):
             self.config.update({'source': args.source})
         self.delete_prompt = _yes_prompt if args.yes else _yes_no_prompt
         try:
-            self._main(args.action, args.checksum, args.dry_run, args.progress)
+            self._main(args.command, args.checksum, args.dry_run, args.progress)
         except SourceNotReachableError as e:
             self.abort(f'source dir `{e.path}` not found, is it mounted?')
         except BackupDirNotFoundError as e:
@@ -253,23 +253,23 @@ class CliApp(BaseApp):
         logger.error(f'`{self.backup_name}` exit with error: {error_message}')
         sys.exit(1)
 
-    def _main(self, action, checksum, dry_run, progress):
-        """dispatch backup volume actions.
+    def _main(self, command, checksum, dry_run, progress):
+        """dispatch backup volume commands.
 
-        :param str action: which command to execute, f.e. `backup`, `list`, `prune`, ...
+        :param str command: which command to execute, f.e. `backup`, `list`, `prune`, ...
         :param bool checksum:
         :param bool dry_run:
         :param bool progress:
         :return: None
-        :raise NotImplementedError: in case of unknown action
+        :raise NotImplementedError: in case of unknown command
         """
         logger.info(f'start `{self.backup_name}` w/ pid `{os.getpid()}`')
         _config = self.config
         worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
                         retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
-        if action in ['s', 'setup']:
+        if command in ['s', 'setup']:
             worker.setup()
-        elif action in ['b', 'backup']:
+        elif command in ['b', 'backup']:
             _last = worker.get_last()
             if _last and _last.is_after_or_equal(_config['silent_fail_threshold']):
                 self.notify_errors = False
@@ -277,18 +277,18 @@ class CliApp(BaseApp):
                                autoprune=_config['autoprune'], checksum=checksum, dry_run=dry_run, progress=progress)
             if not dry_run:
                 self.notify(f'backup `{self.backup_name}` finished')
-        elif action in ['l', 'list']:
+        elif command in ['l', 'list']:
             list_backups(worker)
-        elif action in ['d', 'decay']:
+        elif command in ['d', 'decay']:
             worker.decay_backups(self.delete_backup_prompt)
-        elif action in ['p', 'prune']:
+        elif command in ['p', 'prune']:
             worker.prune_backups(self.delete_backup_prompt)
-        elif action in ['destroy']:
+        elif command in ['destroy']:
             worker.destroy_volume(self.delete_backup_prompt)
-        elif action in ['clean']:
+        elif command in ['clean']:
             worker.delete_syncdir()
         else:
-            raise NotImplementedError(f'unknown command `{action}`')
+            raise NotImplementedError(f'unknown command `{command}`')
         logger.info(f'`{self.backup_name}` exit without errors')
 
     def delete_backup_prompt(self, backup_name):
