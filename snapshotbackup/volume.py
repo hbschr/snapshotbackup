@@ -188,15 +188,12 @@ class Lock(object):
     """lockfile as context manager.
 
     :raise LockedError: when lockfile already exists
-    :raise FileNotFoundError: when lockfile cannot be created (missing dir)
+    :raise FileNotFoundError: when lockfile cannot be created (missing dir) or lockfile couldn't be removed
     :raise OSError: others may occur
 
     >>> import tempfile
-    >>> import os.path
+    >>> import os
     >>> from snapshotbackup.volume import Lock
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(os.path.join(path, 'lock')):
-    ...         pass
     >>> with tempfile.TemporaryDirectory() as path:
     ...     with Lock(os.path.join(path, 'lock')):
     ...         pass
@@ -211,6 +208,11 @@ class Lock(object):
     >>> with tempfile.TemporaryDirectory() as path:
     ...     with Lock(os.path.join(path, 'nope', 'lock')):
     ...         pass
+    Traceback (most recent call last):
+    FileNotFoundError: ...
+    >>> with tempfile.TemporaryDirectory() as path:
+    ...     with Lock(os.path.join(path, 'lock')):
+    ...         os.remove(os.path.join(path, 'lock'))
     Traceback (most recent call last):
     FileNotFoundError: ...
     """
