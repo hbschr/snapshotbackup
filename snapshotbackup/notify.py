@@ -8,7 +8,7 @@ from .subprocess import run
 
 _notify_send = 'notify-send'
 _ssh = 'ssh'
-_ok_icon = 'ok'
+_ok_icon = 'checkmark'
 _error_icon = 'error'
 
 logger = logging.getLogger(__name__)
