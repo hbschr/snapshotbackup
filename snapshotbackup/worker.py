@@ -3,7 +3,8 @@ import os
 from datetime import datetime
 
 from .subprocess import is_reachable, rsync
-from .timestamps import earliest_time, get_timestamp, is_same_day, is_same_week, is_timestamp, parse_timestamp
+from .timestamps import earliest_time, get_human_readable_timedelta, get_timestamp, is_same_day, is_same_week, \
+    is_timestamp, parse_timestamp
 from .volume import BtrfsVolume
 
 logger = logging.getLogger(__name__)
@@ -145,7 +146,7 @@ class Worker(object):
         logger.warning(f'delete all backups, {self}')
         self.delete_syncdir()
         for backup in self.get_backups():
-            if prompt(backup.name):
+            if prompt(backup):
                 self.volume.delete_subvolume(backup.name)
         os.rmdir(self.volume.path)
 
@@ -157,10 +158,9 @@ class Worker(object):
         """
         logger.info(f'decay backups, {self}')
         self.volume.assure_writable()
-        backups = self.get_backups()
-        for to_decay in [_b.name for _b in backups if _b.decay]:
+        for to_decay in [_b for _b in self.get_backups() if _b.decay]:
             if prompt(to_decay):
-                self.volume.delete_subvolume(to_decay)
+                self.volume.delete_subvolume(to_decay.name)
 
     def prune_backups(self, prompt):
         """delete all backups which are not held by `retain_*` retention policy.
@@ -170,10 +170,9 @@ class Worker(object):
         """
         logger.info(f'prune backups, {self}')
         self.volume.assure_writable()
-        backups = self.get_backups()
-        for to_be_pruned in [_b.name for _b in backups if _b.prune]:
+        for to_be_pruned in [_b for _b in self.get_backups() if _b.prune]:
             if prompt(to_be_pruned):
-                self.volume.delete_subvolume(to_be_pruned)
+                self.volume.delete_subvolume(to_be_pruned.name)
 
 
 class Backup(object):
@@ -277,6 +276,21 @@ class Backup(object):
                                                                        'is_retain_all',
                                                                        'is_retain_daily')))
         return f'Backup({attributes})'
+
+    def __str__(self):
+        """return human readable string representation for this backup.
+
+        :return str:
+
+        >>> from snapshotbackup.timestamps import earliest_time
+        >>> from snapshotbackup.worker import Backup
+        >>> backup = Backup('1970-01-01T00:00:00+00', earliest_time, earliest_time, earliest_time)
+        >>> str(backup)
+        'Backup 1970-01-01 00:00:00+00:00 (... ago)'
+        """
+        iso = self.datetime.isoformat(sep=' ')
+        ago = get_human_readable_timedelta(get_timestamp() - self.datetime)
+        return f'Backup {iso} ({ago} ago)'
 
     def is_before(self, timestamp):
         """check if this backup completed before given timestamp.

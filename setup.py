@@ -26,6 +26,7 @@ setup(
     url='https://github.com/hbschr/snapshotbackup',
     install_requires=[
         'dateparser>=0.7.0',
+        'humanfriendly>=4.17',
         'python-dateutil>=2.7.2',
         'pytz>=2018.4',  # needed by `dateparser`
     ],

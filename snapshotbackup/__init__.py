@@ -291,10 +291,10 @@ class CliApp(BaseApp):
             raise NotImplementedError(f'unknown command `{command}`')
         logger.info(f'`{self.backup_name}` exit without errors')
 
-    def delete_backup_prompt(self, backup_name):
+    def delete_backup_prompt(self, backup):
         """
 
-        :param str backup_name:
+        :param str backup:
         :return bool:
         """
-        return self.delete_prompt(f'delete {backup_name}')
+        return self.delete_prompt(f'delete {backup}')
