@@ -1,4 +1,5 @@
 import dateparser
+import humanfriendly
 from datetime import datetime, timedelta, timezone
 from dateutil.parser import isoparse
 
@@ -6,6 +7,7 @@ from .exceptions import TimestampParseError
 
 
 earliest_time = isoparse('0001-01-01T00+00:00')
+"""earliest possible datetime, `datetime.min` is not offset-aware"""
 
 
 def get_timestamp():
@@ -18,6 +20,25 @@ def get_timestamp():
     datetime.datetime(...)
     """
     return datetime.now(timezone.utc).replace(microsecond=0).astimezone()
+
+
+def get_human_readable_timedelta(delta):
+    """returns human readable string of given `delta`.
+    restricts to three units, does not round minutes to hours, but does round to full seconds.
+
+    :param timedelta delta:
+    :return str:
+
+    >>> from datetime import timedelta
+    >>> from snapshotbackup.timestamps import get_human_readable_timedelta
+    >>> get_human_readable_timedelta(timedelta(days=15, hours=3, minutes=59, seconds=59))
+    '2 weeks, 1 day and 3 hours'
+    >>> get_human_readable_timedelta(timedelta(minutes=2, seconds=10, milliseconds=500))
+    '2 minutes and 10 seconds'
+    >>> get_human_readable_timedelta(timedelta(seconds=10, milliseconds=501))
+    '11 seconds'
+    """
+    return humanfriendly.format_timespan(round(delta.total_seconds()))
 
 
 def parse_timestamp(string):

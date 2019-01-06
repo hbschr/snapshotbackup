@@ -1,5 +1,6 @@
 import logging
 import shlex
+import subprocess
 
 from .exceptions import CommandNotFoundError
 from .subprocess import run
@@ -7,7 +8,7 @@ from .subprocess import run
 
 _notify_send = 'notify-send'
 _ssh = 'ssh'
-_ok_icon = 'ok'
+_ok_icon = 'checkmark'
 _error_icon = 'error'
 
 logger = logging.getLogger(__name__)
@@ -29,5 +30,5 @@ def send_notification(title, message, error=False, notify_remote=None):
         args = [_ssh, notify_remote, ' '.join([shlex.quote(_a) for _a in args])]
     try:
         run(*args)
-    except CommandNotFoundError as e:
-        logger.warning(f'{e}, could not send notification "{title} {message}"')
+    except (CommandNotFoundError, subprocess.CalledProcessError) as e:
+        logger.warning(f'could not send notification "{title} {message}", {e}')
