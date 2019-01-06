@@ -43,9 +43,9 @@ def run(*args, show_output=False):
         if show_output:
             subprocess.run(args, check=True)
         else:
-            completed_process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            logger.log(DEBUG_SHELL, f'stdout: {completed_process.stdout.decode("utf-8")}')
-            logger.log(DEBUG_SHELL, f'stderr: {completed_process.stderr.decode("utf-8")}')
+            completed_process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+            logger.log(DEBUG_SHELL, f'stdout: {completed_process.stdout}')
+            logger.log(DEBUG_SHELL, f'stderr: {completed_process.stderr}')
             completed_process.check_returncode()
     except FileNotFoundError as e:
         logger.debug(f'raise `CommandNotFoundError` after catching `{e}`')
