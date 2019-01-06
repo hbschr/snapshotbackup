@@ -1,19 +1,9 @@
-import os
+import os.path
 import pytest
 import subprocess
 from unittest.mock import patch
 
 import snapshotbackup.subprocess
-
-
-def test_mock_without_decorator():
-    with patch('subprocess.run', return_value='hallo'):
-        assert subprocess.run('xxx') is 'hallo'
-
-
-@patch('subprocess.run', return_value='hallo')
-def test_mock_with_decorator(_):
-    assert subprocess.run('xxx') is 'hallo'
 
 
 def test_run_true():
@@ -25,22 +15,16 @@ def test_run_false():
         snapshotbackup.subprocess.run('false')
 
 
-@patch('subprocess.run')
-def test_run_silent(_):
-    snapshotbackup.subprocess.run('example')
-    args, kwargs = subprocess.run.call_args
-    assert args[0] == ('example',)
-    assert 'stdout' in kwargs and kwargs['stdout'] == subprocess.PIPE
-    assert 'stderr' in kwargs and kwargs['stderr'] == subprocess.PIPE
+def test_run_silent(capsys):
+    snapshotbackup.subprocess.run('echo', 'test')
+    out, _ = capsys.readouterr()
+    assert out == ''
 
 
-@patch('subprocess.run')
-def test_run_not_silent(_):
-    snapshotbackup.subprocess.run('example', show_output=True)
-    args, kwargs = subprocess.run.call_args
-    assert args[0] == ('example',)
-    assert 'stdout' not in kwargs
-    assert 'stderr' not in kwargs
+def test_run_not_silent(capsys):
+    snapshotbackup.subprocess.run('echo', 'test', show_output=True)
+    out, _ = capsys.readouterr()
+    assert out == 'test\n'
 
 
 def test_is_reachable(tmpdir):
@@ -63,84 +47,84 @@ def test_is_reachable_error(tmpdir):
     assert excinfo.value.path == path
 
 
-@patch('subprocess.run')
-def test_rsync_success(_):
+@patch('snapshotbackup.subprocess.run')
+def test_rsync_success(mocked_run):
     snapshotbackup.subprocess.rsync('source', 'target')
-    assert subprocess.run.call_count == 2
+    assert mocked_run.call_count == 2
 
 
-@patch('subprocess.run', side_effect=subprocess.CalledProcessError(42, 'command'))
-def test_rsync_interrupted(_):
+@patch('snapshotbackup.subprocess.run', side_effect=subprocess.CalledProcessError(42, 'command'))
+def test_rsync_interrupted(mocked_run):
     with pytest.raises(snapshotbackup.exceptions.SyncFailedError) as excinfo:
         snapshotbackup.subprocess.rsync('source', 'target')
     assert excinfo.value.target == 'target'
     assert excinfo.value.errno == 42
-    subprocess.run.assert_called_once()
+    mocked_run.assert_called_once()
 
 
-@patch('subprocess.run')
-def test_rsync_checksum(_):
+@patch('snapshotbackup.subprocess.run')
+def test_rsync_checksum(mocked_run):
     snapshotbackup.subprocess.rsync('source', 'target', checksum=True)
-    args, kwargs = subprocess.run.call_args_list[0]
-    assert '--checksum' in args[0]
+    args, kwargs = mocked_run.call_args_list[0]
+    assert '--checksum' in args
 
 
-@patch('subprocess.run')
-def test_rsync_dry_run(_):
+@patch('snapshotbackup.subprocess.run')
+def test_rsync_dry_run(mocked_run):
     snapshotbackup.subprocess.rsync('source', 'target', dry_run=True)
-    args, kwargs = subprocess.run.call_args_list[0]
-    assert '--dry-run' in args[0]
+    args, kwargs = mocked_run.call_args_list[0]
+    assert '--dry-run' in args
 
 
-@patch('subprocess.run')
-def test_create_subvolume(_):
+@patch('snapshotbackup.subprocess.run')
+def test_create_subvolume(mocked_run):
     snapshotbackup.subprocess.create_subvolume('path')
-    assert subprocess.run.call_count == 2
+    assert mocked_run.call_count == 2
 
 
-@patch('subprocess.run')
-def test_delete_subvolume(_):
+@patch('snapshotbackup.subprocess.run')
+def test_delete_subvolume(mocked_run):
     snapshotbackup.subprocess.delete_subvolume('is_btrfs')
-    assert subprocess.run.call_count == 2
+    assert mocked_run.call_count == 2
 
 
-@patch('subprocess.run')
-def test_make_snapshot(_):
+@patch('snapshotbackup.subprocess.run')
+def test_make_snapshot(mocked_run):
     snapshotbackup.subprocess.make_snapshot('source', 'target')
-    assert subprocess.run.call_count == 2
-    args, _ = subprocess.run.call_args_list[0]
-    assert '-r' in args[0]
+    assert mocked_run.call_count == 2
+    args, _ = mocked_run.call_args_list[0]
+    assert '-r' in args
 
 
-@patch('subprocess.run')
-def test_make_snapshot_writable(_):
+@patch('snapshotbackup.subprocess.run')
+def test_make_snapshot_writable(mocked_run):
     snapshotbackup.subprocess.make_snapshot('source', 'target', readonly=False)
-    assert subprocess.run.call_count == 2
-    args, _ = subprocess.run.call_args_list[0]
-    assert '-r' not in args[0]
+    assert mocked_run.call_count == 2
+    args, _ = mocked_run.call_args_list[0]
+    assert '-r' not in args
 
 
-@patch('subprocess.run')
-def test_is_btrfs(_):
+@patch('snapshotbackup.subprocess.run')
+def test_is_btrfs(mocked_run):
     assert snapshotbackup.subprocess.is_btrfs('path') is True
-    subprocess.run.assert_called_once()
+    mocked_run.assert_called_once()
 
 
-@patch('subprocess.run', side_effect=subprocess.CalledProcessError(1, 'command'))
-def test_is_not_btrfs(_):
+@patch('snapshotbackup.subprocess.run', side_effect=subprocess.CalledProcessError(1, 'command'))
+def test_is_not_btrfs(mocked_run):
     assert snapshotbackup.subprocess.is_btrfs('path') is False
-    subprocess.run.assert_called_once()
+    mocked_run.assert_called_once()
 
 
-@patch('subprocess.run')
-def test_btrfs_sync(_):
+@patch('snapshotbackup.subprocess.run')
+def test_btrfs_sync(mocked_run):
     snapshotbackup.subprocess.btrfs_sync('path')
-    subprocess.run.assert_called_once()
+    mocked_run.assert_called_once()
 
 
-@patch('subprocess.run', side_effect=subprocess.CalledProcessError(1, 'command'))
-def test_btrfs_sync_failed(_):
+@patch('snapshotbackup.subprocess.run', side_effect=subprocess.CalledProcessError(1, 'command'))
+def test_btrfs_sync_failed(mocked_run):
     with pytest.raises(snapshotbackup.exceptions.BtrfsSyncError) as excinfo:
         snapshotbackup.subprocess.btrfs_sync('path')
     assert excinfo.value.path == 'path'
-    subprocess.run.assert_called_once()
+    mocked_run.assert_called_once()

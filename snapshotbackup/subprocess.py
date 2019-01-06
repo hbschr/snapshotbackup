@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def run(*args, show_output=False):
-    """wrapper around `subprocess.run`: executes given command in a consistent way in this project.
+    """wrapper around python's `subprocess`: executes given command in a consistent way in this project.
 
     :param args: command arguments
     :type args: tuple of str
@@ -24,29 +24,28 @@ def run(*args, show_output=False):
     >>> from snapshotbackup.subprocess import run
     >>> run('true')
     >>> run('true', show_output=True)
+    >>> run('echo', 'test')
+    >>> run('echo', 'test', show_output=True)
+    test
     >>> run('false')
     Traceback (most recent call last):
     subprocess.CalledProcessError: ...
-    >>> run('false', show_output=True)
-    Traceback (most recent call last):
-    subprocess.CalledProcessError: ...
     >>> run('not-a-command-whae5roo')
-    Traceback (most recent call last):
-    snapshotbackup.exceptions.CommandNotFoundError: ...
-    >>> run('not-a-command-whae5roo', show_output=True)
     Traceback (most recent call last):
     snapshotbackup.exceptions.CommandNotFoundError: ...
     """
     logger.log(DEBUG_SHELL, f'run {args}, show_output={show_output}')
     args = tuple(_a for _a in args if _a is not None)
     try:
-        if show_output:
-            subprocess.run(args, check=True)
-        else:
-            completed_process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-            logger.log(DEBUG_SHELL, f'stdout: {completed_process.stdout}')
-            logger.log(DEBUG_SHELL, f'stderr: {completed_process.stderr}')
-            completed_process.check_returncode()
+        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
+        while process.poll() is None:
+            line = process.stdout.readline().rstrip()
+            if line:
+                logger.log(DEBUG_SHELL, f'subprocess: {line}')
+                if show_output:
+                    print(line)
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, args)
     except FileNotFoundError as e:
         logger.debug(f'raise `CommandNotFoundError` after catching `{e}`')
         raise CommandNotFoundError(e.filename) from e
