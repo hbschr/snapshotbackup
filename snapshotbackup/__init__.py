@@ -3,6 +3,7 @@ import configparser
 import importlib
 import logging
 import os
+import psutil
 import signal
 import sys
 from abc import ABC, abstractmethod
@@ -248,6 +249,10 @@ class CliApp(BaseApp):
         :return: this function never returns, it always exits
         :exit 1: error
         """
+        # on SIGTERM subprocesses are not terminated
+        for child in psutil.Process().children(recursive=True):
+            logger.debug(f'terminate child process {child.pid}')
+            child.terminate()
         if self.notify_errors:
             self.notify(f'backup `{self.backup_name}` failed with error:\n{error_message}', error=True)
         logger.error(f'`{self.backup_name}` exit with error: {error_message}')

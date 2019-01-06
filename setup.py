@@ -27,6 +27,7 @@ setup(
     install_requires=[
         'dateparser>=0.7.0',
         'humanfriendly>=4.17',
+        'psutil>=5.4.8',
         'python-dateutil>=2.7.2',
         'pytz>=2018.4',  # needed by `dateparser`
     ],
