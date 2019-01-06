@@ -37,15 +37,15 @@ def run(*args, show_output=False):
     logger.log(DEBUG_SHELL, f'run {args}, show_output={show_output}')
     args = tuple(_a for _a in args if _a is not None)
     try:
-        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
-        while process.poll() is None:
-            line = process.stdout.readline().rstrip()
-            if line:
-                logger.log(DEBUG_SHELL, f'subprocess: {line}')
-                if show_output:
-                    print(line)
-        if process.returncode != 0:
-            raise subprocess.CalledProcessError(process.returncode, args)
+        with subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8') as process:
+            while process.poll() is None:
+                line = process.stdout.readline().rstrip()
+                if line:
+                    logger.log(DEBUG_SHELL, f'subprocess: {line}')
+                    if show_output:
+                        print(line)
+            if process.returncode != 0:
+                raise subprocess.CalledProcessError(process.returncode, args)
     except FileNotFoundError as e:
         logger.debug(f'raise `CommandNotFoundError` after catching `{e}`')
         raise CommandNotFoundError(e.filename) from e
