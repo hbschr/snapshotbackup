@@ -34,7 +34,7 @@ setup(
         'dev': [
             'coverage>=4.5.2',
             'flake8>=3.6.0',
-            'pytest>=4.0.1',
+            'pytest >=4.0.1, <4.1.0',
             'pytest-cov>=2.6.0',
             'pytest-mccabe>=0.1',
             'sphinx>=1.8.2',
