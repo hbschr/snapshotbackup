@@ -1,7 +1,7 @@
 # workbench
 *~
 /.idea
-/sandbox
+/playground
 /doc/Makefile
 
 # git & tools

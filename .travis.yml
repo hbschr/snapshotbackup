@@ -1,5 +1,5 @@
 language: python
-python: '3.6'
+python: '3.7-dev'
 sudo: required
 install:
   - pip install -r requirements.txt
@@ -7,7 +7,7 @@ install:
 script:
   - make check
   - make doc
-  - make -f Makefile.demo test
+  - make -f makefile.demo test
   - tox
 after_success:
   - coveralls

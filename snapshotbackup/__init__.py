@@ -1,202 +1,305 @@
+import argparse
 import configparser
 import importlib
 import logging
 import os
+import psutil
+import signal
 import sys
-from csboilerplate import cli_app
+from abc import ABC, abstractmethod
 from pkg_resources import get_distribution
 
 from .notify import send_notification
-from .backupdir import BackupDir
+from .worker import Worker
 from .config import parse_config
 from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, LockedError, \
     SourceNotReachableError, SyncFailedError, TimestampParseError
-from .subprocess import is_reachable, rsync, DEBUG_SHELL
+from .subprocess import DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
 logger = logging.getLogger(__name__)
 
 
-def make_backup(source_dir, backup_dir, ignore, progress=False, checksum=False, dry_run=False):
-    """make a backup for given configuration.
+argument_parser = argparse.ArgumentParser()
+argument_parser.add_argument('command', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p', 'decay', 'd',
+                                                 'destroy', 'clean'],
+                             help='setup backup path (`mkdir -p`), make backup, list backups, prune backups not held '
+                                  'by retention policy, decay old backups, destroy all backups or clean backup '
+                                  'directory')
+argument_parser.add_argument('name', help='section name in config file')
+argument_parser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
+                             help='use given config file')
+argument_parser.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used '
+                                                                              'thrice')
+argument_parser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
+argument_parser.add_argument('-s', '--silent', action='store_true',
+                             help='silent mode: log errors, warnings and `--debug` to journald instead of stdout ('
+                                  'extra dependencies needed, install with `pip install snapshotbackup[journald]`)')
+argument_parser.add_argument('--checksum', action='store_true',
+                             help='detect changes by checksum instead of file size and modification time, '
+                                  'increases disk load significantly (triggers `rsync --checksum`)')
+argument_parser.add_argument('--dry-run', action='store_true', help='pass `--dry-run` to rsync and display rsync '
+                                                                    'output, no changes are made on disk')
+argument_parser.add_argument('--source', help='use given path as source for backup, replaces `source` from config file')
+argument_parser.add_argument('--yes', action='store_true', help='say yes to each question, allows non-interactive '
+                                                                'deletion (prune, decay, destroy)')
+argument_parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
+                             help='print version number and exit')
 
-    :param str source_dir:
-    :param str backup_dir:
-    :param str ignore:
-    :param bool progress:
-    :param bool checksum:
-    :param bool dry_run:
-    :return: None
+
+def _yes_no_prompt(message):
+    """prints message, waits for user input and returns `True` if prompt was answered w/ "yes" or "y".
+
+    :param str message:
+    :return bool:
     """
-    logger.info(f'make backup, source_dir={source_dir}, backup_dir={backup_dir}, ignore={ignore}, progress={progress}')
-    is_reachable(source_dir)
-    vol = BackupDir(backup_dir, assert_syncdir=True)
-    with vol.lock():
-        if dry_run:
-            print(f'dry run, no changes will be made on disk, this is what rsync would do:')
-        rsync(source_dir, vol.sync_path, exclude=ignore, checksum=checksum, progress=progress, dry_run=dry_run)
-        if dry_run:
-            print(f'dry run, no changes were made on disk')
-        else:
-            vol.snapshot_sync()
+    return input(f'{message} [y/N] ').lower() in ('y', 'yes')
 
 
-def list_backups(backup_dir, retain_all_after, retain_daily_after):
+def _yes_prompt(message):
+    """prints message, returns `True`.
+
+    :param str message:
+    :return bool: True
+
+    >>> from snapshotbackup import _yes_prompt
+    >>> _yes_prompt('message')
+    message
+    True
+    """
+    print(message)
+    return True
+
+
+def list_backups(worker):
     """list all backups for given configuration.
 
-    :param str backup_dir:
-    :param datetime.datetime retain_all_after:
-    :param datetime.datetime retain_daily_after:
+    :param Worker worker:
     :return: None
     """
-    logger.info(f'list backups, backup_dir={backup_dir}, retain_all_after={retain_all_after}, '
-                f'retain_daily_after={retain_daily_after}')
-    vol = BackupDir(backup_dir)
-    for backup in vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after):
-        retain_all = backup.is_inside_retain_all_interval
-        retain_daily = backup.is_inside_retain_daily_interval
+    logger.info(f'list backups, {worker}')
+    for backup in worker.get_backups():
+        retain_all = backup.is_retain_all
+        retain_daily = backup.is_retain_daily
         print(f'{backup.name}'
               f'\t{"retain_all" if retain_all else "retain_daily" if retain_daily else "        "}'
               f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
-              f'\t{"prune candidate" if backup.prune else ""}')
+              f'\t{"prune candidate" if backup.prune else ""}'
+              f'\t{"decay candidate" if backup.decay else ""}')
 
 
-def prune_backups(backup_dir, retain_all_after, retain_daily_after):
-    """delete all backups for given configuration which are not held by retention policy.
+def main():
+    """entry function for setuptools' `console_scripts` entry point.
+    setups process logic (signal handling, logging of uncaught exceptions) and
+    initializes and runs :class:`snapshotbackup.CliApp`.
 
-    :param str backup_dir:
-    :param datetime.datetime retain_all_after:
-    :param datetime.datetime retain_daily_after:
     :return: None
     """
-    logger.info(f'prune backups, backup_dir={backup_dir}, retain_all_after={retain_all_after},'
-                f'retain_daily_after={retain_daily_after}')
-    vol = BackupDir(backup_dir)
-    backups = vol.get_backups(retain_all_after=retain_all_after, retain_daily_after=retain_daily_after)
-    for to_be_pruned in [_b for _b in backups if _b.prune]:
-        print(f'prune {to_be_pruned.name}')
-        to_be_pruned.delete()
+    app = CliApp()
+    signal.signal(signal.SIGTERM, lambda signal, frame: app.abort('Terminated'))
+    try:
+        app()
+    except KeyboardInterrupt:
+        app.abort('KeyboardInterrupt')
+    except Exception as e:
+        logger.exception(e)
+        app.abort('uncaught exception')
 
 
-def setup_path(path):
-    """assert given path exists.
-
-    >>> import os.path, tempfile
-    >>> from snapshotbackup import setup_path
-    >>> with tempfile.TemporaryDirectory() as path:
-    ...     newdir = os.path.join(path, 'long', 'path')
-    ...     setup_path(newdir)
-    ...     os.path.isdir(newdir)
-    True
-
-    :param str path:
-    :return: None
+class BaseApp(ABC):
+    """base application provides low level app logic like logger and config file handling.
+    this is an abstract class, :func:`snapshotbackup.BaseApp.abort` has to implemented in subclass.
     """
-    logger.info(f'setup path `{path}`')
-    os.makedirs(path, exist_ok=True)
+
+    name: str = __name__
+    """name of this app"""
+
+    def __init__(self, name=__name__):
+        """initialize an base app instance.
+
+        :param str name: name of this app instance
+        """
+        self.name = name
+        super().__init__()
+
+    def _get_journald_handler(self):
+        """get logging handler for `journald`.
+
+        :raise ModuleNotFoundError: when module `systemd.journal` couldn't be imported
+        :return logging.Handler:
+        """
+        systemd_journal = importlib.import_module('systemd.journal')
+        return systemd_journal.JournalHandler(SYSLOG_IDENTIFIER=self.name)
+
+    def _configure_logger(self, level, journald):
+        """configures python logger, aware of custom logging levels.
+
+        :param int level: logging level, 0 `warning`, 1 `info`, 2 `debug`, 3 `debug_shell`
+        :param bool journald: redirects log from `stdout` to `journald`
+        :return: None
+        :exit: calls :func:`snapshotbackup.BaseApp.abort` in case of error
+        """
+        try:
+            handlers = None
+            if journald:
+                handlers = [self._get_journald_handler()]
+            level = (logging.WARNING, logging.INFO, logging.DEBUG, DEBUG_SHELL)[level]
+            logging.basicConfig(handlers=handlers, level=level)
+        except ModuleNotFoundError as e:
+            self.abort(f'dependency for optional feature not found, missing module: {e.name}')
+        except IndexError:
+            self.abort('debugging doesn\'t go that far, remove one `-d`')
+
+    def _get_config(self, filepath, section):
+        """populate `self.config`. make sure to call this first before relying on `self.config`.
+
+        :param str filepath: path to config file
+        :param str section: section in ini file to use
+        :return dict:
+        :exit: calls :func:`snapshotbackup.BaseApp.abort` in case of error
+        """
+        try:
+            return parse_config(filepath, section)
+        except FileNotFoundError as e:
+            self.abort(f'configuration file `{e.filename}` not found')
+        except configparser.NoSectionError as e:
+            self.abort(f'no configuration for `{e.section}` found')
+        except TimestampParseError as e:
+            self.abort(e)
+
+    @abstractmethod
+    def abort(self, error_message):
+        """aborts execution of app with an error message.
+
+        :param str error_message:
+        :return: None
+        """
+        pass
 
 
-def _exit(app, error_message=None):
-    """log and exit.
+class CliApp(BaseApp):
+    """main cli application, provides job handling."""
 
-    >>> from unittest.mock import Mock
-    >>> from snapshotbackup import _exit
-    >>> app = Mock()
-    >>> app.name = 'application_name'
-    >>> app.args.name = 'backup_name'
-    >>> app.config = {'notify_remote': None}
-    >>> _exit(app)
-    Traceback (most recent call last):
-    SystemExit
-    >>> try:
-    ...     _exit(app)
-    ... except SystemExit as e:
-    ...     assert e.code is None
-    >>> try:
-    ...     _exit(app, 'xxx')
-    ... except SystemExit as e:
-    ...     assert e.code == 1
+    backup_name: str
+    """job name, corresponds to config file section name"""
 
-    :param str error_message: will be logged. changes exit status to `1`.
-    :exit 0: success
-    :exit 1: error
-    """
-    if error_message is None:
-        logger.info(f'`{app.args.name}` exit without errors')
-        sys.exit()
-    send_notification(app.name, f'backup `{app.args.name}` failed with error:\n{error_message}', error=True,
-                      notify_remote=app.config['notify_remote'] if hasattr(app, 'config') else False)
-    logger.error(f'`{app.args.name}` exit with error: {error_message}')
-    sys.exit(1)
+    config: dict = {}
+    """parsed config file"""
 
+    delete_prompt: callable
+    """prompt to use for deletion of backup snapshots"""
 
-@cli_app(name=__name__, exit_handler=_exit)  # noqa: C901
-def main(app):
-    try:
-        handlers = [importlib.import_module('systemd.journal').JournalHandler(SYSLOG_IDENTIFIER=app.name)] \
-            if app.args.silent else None
-        app.logging_config(log_level=app.args.debug, handlers=handlers,
-                           log_levels=[logging.WARNING, logging.INFO, logging.DEBUG, DEBUG_SHELL])
-    except ModuleNotFoundError as e:
-        app.exit(f'dependency for optional feature not found, missing module: {e.name}')
-    except IndexError:
-        app.exit('debugging doesn\'t go that far, remove one `-d`')
-    logger.info(f'start `{app.args.name}` w/ pid `{os.getpid()}`')
+    notify_errors: bool = True
+    """if `True` errors will be notified"""
 
-    try:
-        app.config = parse_config(app.args.name, filepath=app.args.config)
-    except FileNotFoundError as e:
-        app.exit(f'configuration file `{e.filename}` not found')
-    except configparser.NoSectionError as e:
-        app.exit(f'no configuration for `{e.section}` found')
-    except TimestampParseError as e:
-        app.exit(e)
+    def __call__(self, args=sys.argv[1:]):
+        """entry point for this `CliApp`.
 
-    _config = app.config
-    try:
-        if app.args.action in ['s', 'setup']:
-            setup_path(_config['backups'])
-        elif app.args.action in ['b', 'backup']:
-            make_backup(app.args.source or _config['source'], _config['backups'], _config['ignore'],
-                        progress=app.args.progress, checksum=app.args.checksum, dry_run=app.args.dry_run)
-            if not app.args.dry_run:
-                send_notification(app.name, f'backup `{app.args.name}` finished',
-                                  notify_remote=_config['notify_remote'])
-        elif app.args.action in ['l', 'list']:
-            list_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
-        elif app.args.action in ['p', 'prune']:
-            prune_backups(_config['backups'], _config['retain_all_after'], _config['retain_daily_after'])
-    except SourceNotReachableError as e:
-        app.exit(f'source dir `{e.path}` not found, is it mounted?')
-    except BackupDirNotFoundError as e:
-        app.exit(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
-    except BackupDirError as e:
-        app.exit(e)
-    except CommandNotFoundError as e:
-        app.exit(f'command `{e.command}` not found, mayhap missing software?')
-    except LockedError as e:
-        app.exit(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
-    except SyncFailedError as e:
-        app.exit(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state (error number {e.errno})')
+        :param list args:
+        :return: None
+        :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
+        """
+        args = argument_parser.parse_args(args=args)
+        self._configure_logger(args.debug, args.silent)
+        self.backup_name = args.name
+        self.config = self._get_config(args.config, self.backup_name)
+        if args.source:
+            self.config.update({'source': args.source})
+        self.delete_prompt = _yes_prompt if args.yes else _yes_no_prompt
+        try:
+            self._main(args.command, args.checksum, args.dry_run, args.progress)
+        except SourceNotReachableError as e:
+            self.abort(f'source dir `{e.path}` not found, is it mounted?')
+        except BackupDirNotFoundError as e:
+            self.abort(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
+        except BackupDirError as e:
+            self.abort(e)
+        except CommandNotFoundError as e:
+            self.abort(f'command `{e.command}` not found, mayhap missing software?')
+        except LockedError as e:
+            self.abort(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
+        except SyncFailedError as e:
+            self.abort(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
+                       f'(rsync error {e.errno}, {e.error_message})')
 
+    def notify(self, message, error=False):
+        """display message via libnotify.
 
-main.argparser.add_argument('action', choices=['setup', 's', 'backup', 'b', 'list', 'l', 'prune', 'p'],
-                            help='setup backup path (`mkdir -p`), make backup, list backups '
-                                 'or prune backups not held by retention policy')
-main.argparser.add_argument('name', help='section name in config file')
-main.argparser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
-                            help='use given config file')
-main.argparser.add_argument('-d', '--debug', action='count', default=0,
-                            help='lower logging threshold, may be used thrice')
-main.argparser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
-main.argparser.add_argument('-s', '--silent', action='store_true',
-                            help='silent mode: log errors, warnings and `--debug` to journald instead of stdout '
-                                 '(extra dependencies needed, install with `pip install snapshotbackup[journald]`)')
-main.argparser.add_argument('--checksum', action='store_true',
-                            help='detect changes by checksum instead of file size and modification time, '
-                                 'increases disk load significantly (triggers `rsync --checksum`)')
-main.argparser.add_argument('--dry-run', action='store_true',
-                            help='pass `--dry-run` to rsync and display rsync output, no changes are made on disk')
-main.argparser.add_argument('--source', help='use given path as source for backup, replaces `source` from config file')
-main.argparser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
-                            help='print version number and exit')
+        :param str message:
+        :param bool error:
+        :return: None
+        """
+        send_notification(self.name, message, error=error, notify_remote=self.config.get('notify_remote'))
+
+    def abort(self, error_message):
+        """log, notify and exit.
+
+        >>> from unittest.mock import Mock
+        >>> from snapshotbackup import CliApp
+        >>> app = CliApp()
+        >>> app.name = 'application_name'
+        >>> app.backup_name = 'backup_name'
+        >>> app.config = {'notify_remote': None}
+        >>> try:
+        ...     app.abort('xxx')
+        ... except SystemExit as e:
+        ...     assert e.code == 1
+
+        :param str error_message: will be logged and notified
+        :return: this function never returns, it always exits
+        :exit 1: error
+        """
+        # on SIGTERM subprocesses are not terminated
+        for child in psutil.Process().children(recursive=True):
+            logger.debug(f'terminate child process {child.pid}')
+            child.terminate()
+        if self.notify_errors:
+            self.notify(f'backup `{self.backup_name}` failed with error:\n{error_message}', error=True)
+        logger.error(f'`{self.backup_name}` exit with error: {error_message}')
+        sys.exit(1)
+
+    def _main(self, command, checksum, dry_run, progress):
+        """dispatch backup volume commands.
+
+        :param str command: which command to execute, f.e. `backup`, `list`, `prune`, ...
+        :param bool checksum:
+        :param bool dry_run:
+        :param bool progress:
+        :return: None
+        :raise NotImplementedError: in case of unknown command
+        """
+        logger.info(f'start `{self.backup_name}` w/ pid `{os.getpid()}`')
+        _config = self.config
+        worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
+                        retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
+        if command in ['s', 'setup']:
+            worker.setup()
+        elif command in ['b', 'backup']:
+            _last = worker.get_last()
+            if _last and _last.is_after_or_equal(_config['silent_fail_threshold']):
+                self.notify_errors = False
+            worker.make_backup(_config['source'], _config['ignore'], autodecay=_config['autodecay'],
+                               autoprune=_config['autoprune'], checksum=checksum, dry_run=dry_run, progress=progress)
+            if not dry_run:
+                self.notify(f'backup `{self.backup_name}` finished')
+        elif command in ['l', 'list']:
+            list_backups(worker)
+        elif command in ['d', 'decay']:
+            worker.decay_backups(self.delete_backup_prompt)
+        elif command in ['p', 'prune']:
+            worker.prune_backups(self.delete_backup_prompt)
+        elif command in ['destroy']:
+            worker.destroy_volume(self.delete_backup_prompt)
+        elif command in ['clean']:
+            worker.delete_syncdir()
+        else:
+            raise NotImplementedError(f'unknown command `{command}`')
+        logger.info(f'`{self.backup_name}` exit without errors')
+
+    def delete_backup_prompt(self, backup):
+        """
+
+        :param str backup:
+        :return bool:
+        """
+        return self.delete_prompt(f'delete {backup}')

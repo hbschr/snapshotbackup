@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def run(*args, show_output=False):
-    """wrapper around `subprocess.run`: executes given command in a consistent way in this project.
+    """wrapper around python's `subprocess`: executes given command in a consistent way in this project.
 
     :param args: command arguments
     :type args: tuple of str
@@ -24,29 +24,28 @@ def run(*args, show_output=False):
     >>> from snapshotbackup.subprocess import run
     >>> run('true')
     >>> run('true', show_output=True)
+    >>> run('echo', 'test')
+    >>> run('echo', 'test', show_output=True)
+    test
     >>> run('false')
     Traceback (most recent call last):
     subprocess.CalledProcessError: ...
-    >>> run('false', show_output=True)
-    Traceback (most recent call last):
-    subprocess.CalledProcessError: ...
     >>> run('not-a-command-whae5roo')
-    Traceback (most recent call last):
-    snapshotbackup.exceptions.CommandNotFoundError: ...
-    >>> run('not-a-command-whae5roo', show_output=True)
     Traceback (most recent call last):
     snapshotbackup.exceptions.CommandNotFoundError: ...
     """
     logger.log(DEBUG_SHELL, f'run {args}, show_output={show_output}')
     args = tuple(_a for _a in args if _a is not None)
     try:
-        if show_output:
-            subprocess.run(args, check=True)
-        else:
-            completed_process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            logger.log(DEBUG_SHELL, f'stdout: {completed_process.stdout.decode("utf-8")}')
-            logger.log(DEBUG_SHELL, f'stderr: {completed_process.stderr.decode("utf-8")}')
-            completed_process.check_returncode()
+        with subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8') as process:
+            while process.poll() is None:
+                line = process.stdout.readline().rstrip()
+                if line:
+                    logger.log(DEBUG_SHELL, f'subprocess: {line}')
+                    if show_output:
+                        print(line)
+            if process.returncode != 0:
+                raise subprocess.CalledProcessError(process.returncode, args)
     except FileNotFoundError as e:
         logger.debug(f'raise `CommandNotFoundError` after catching `{e}`')
         raise CommandNotFoundError(e.filename) from e
@@ -65,11 +64,11 @@ def is_reachable(path):
     args.extend(['ls', path])
     try:
         run(*args)
-    except subprocess.CalledProcessError:
-        raise SourceNotReachableError(path)
+    except subprocess.CalledProcessError as e:
+        raise SourceNotReachableError(path) from e
 
 
-def rsync(source, target, exclude='', checksum=False, progress=False, dry_run=False):
+def rsync(source, target, exclude=(), checksum=False, progress=False, dry_run=False):
     """run `rsync` for given `source` and `target`.
 
     :param str source: path to read from
@@ -79,16 +78,24 @@ def rsync(source, target, exclude='', checksum=False, progress=False, dry_run=Fa
     :raise SyncFailedError: when sync is interrupted
     :return: None
     """
-    logger.info(f'sync `{source}` to `{target}`')
-    args = ['rsync', '--human-readable', '--itemize-changes', '--stats',
-            '-azv', '--sparse', '--delete', '--delete-excluded', f'--exclude={exclude}',
-            f'{source}/', target, '--checksum' if checksum else None, '--dry-run' if dry_run else None]
+    logger.debug(f'sync `{source}` to `{target}`')
+    args = ['rsync', '--human-readable', '--itemize-changes', '--stats']
+    args.extend(['-azv', '--sparse', '--delete', '--delete-excluded'])
+    args.extend([f'--exclude={path}' for path in exclude])
+    args.extend([f'{source}/', target])
+    if checksum:
+        args.append('--checksum')
+    if dry_run:
+        args.append('--dry-run')
+        print(f'dry run, no changes will be made on disk, this is what rsync would do:')
     try:
         run(*args, show_output=progress or dry_run)
         btrfs_sync(target)
     except subprocess.CalledProcessError as e:
         logger.debug(f'raise `SyncFailedError` after catching `{e}`')
         raise SyncFailedError(target, e.returncode) from e
+    if dry_run:
+        print(f'dry run, no changes were made on disk')
 
 
 def create_subvolume(path):
@@ -97,7 +104,7 @@ def create_subvolume(path):
     :param str path: filesystem path
     :return: None
     """
-    logger.info(f'create subvolume `{path}`')
+    logger.debug(f'create subvolume `{path}`')
     run('btrfs', 'subvolume', 'create', path)
     btrfs_sync(path)
 
@@ -121,7 +128,7 @@ def make_snapshot(source, target, readonly=True):
     :param bool readonly: if `True` snapshot will not be writable
     :return: None
     """
-    logger.info(f'create snapshot `{target}`')
+    logger.debug(f'create snapshot `{target}`')
     args = 'btrfs', 'subvolume', 'snapshot', '-r' if readonly else None, source, target
     run(*args)
     btrfs_sync(target)
