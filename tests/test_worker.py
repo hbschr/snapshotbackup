@@ -43,6 +43,13 @@ def test_worker_assert_syncdir_recover(_, tmpdir):
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_setup(_):
+    worker = Worker('/path')
+    worker.setup()
+    worker.volume.setup.assert_called_once()
+
+
+@patch('snapshotbackup.worker.BtrfsVolume')
 @patch('snapshotbackup.worker.is_reachable')
 @patch('snapshotbackup.worker.rsync')
 def test_worker_make_backup(mocked_rsync, mocked_reachable, _):
