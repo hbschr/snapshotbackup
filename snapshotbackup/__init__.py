@@ -12,8 +12,8 @@ from pkg_resources import get_distribution
 from .notify import send_notification
 from .worker import Worker
 from .config import parse_config
-from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, LockedError, \
-    SourceNotReachableError, SyncFailedError, TimestampParseError
+from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, ConfigFileNotFound, \
+    LockedError, SourceNotReachableError, SyncFailedError, TimestampParseError
 from .subprocess import DEBUG_SHELL
 
 __version__ = get_distribution(__name__).version
@@ -27,8 +27,7 @@ argument_parser.add_argument('command', choices=['setup', 's', 'backup', 'b', 'l
                                   'by retention policy, decay old backups, destroy all backups or clean backup '
                                   'directory')
 argument_parser.add_argument('name', help='section name in config file')
-argument_parser.add_argument('-c', '--config', metavar='CONFIGFILE', default='/etc/snapshotbackup.ini',
-                             help='use given config file')
+argument_parser.add_argument('-c', '--config', metavar='CONFIGFILE', help='use given config file')
 argument_parser.add_argument('-d', '--debug', action='count', default=0, help='lower logging threshold, may be used '
                                                                               'thrice')
 argument_parser.add_argument('-p', '--progress', action='store_true', help='print progress on stdout')
@@ -160,11 +159,9 @@ class BaseApp(ABC):
         """
         try:
             return parse_config(filepath, section)
-        except FileNotFoundError as e:
-            self.abort(f'configuration file `{e.filename}` not found')
         except configparser.NoSectionError as e:
             self.abort(f'no configuration for `{e.section}` found')
-        except TimestampParseError as e:
+        except (ConfigFileNotFound, TimestampParseError) as e:
             self.abort(e)
 
     @abstractmethod

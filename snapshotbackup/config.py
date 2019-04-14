@@ -1,10 +1,16 @@
 import configparser
 import csv
+import os
+from pathlib import Path
 
+from xdg import (XDG_CONFIG_DIRS, XDG_CONFIG_HOME)
 
+from snapshotbackup.exceptions import ConfigFileNotFound
 from .timestamps import parse_human_readable_relative_dates
 
 
+_config_filename = 'snapshotbackup.ini'
+_config_basepaths = [XDG_CONFIG_HOME, *XDG_CONFIG_DIRS, Path('/etc')]
 _defaults = {
     'ignore': '',
     'retain_all': '1 day',
@@ -15,6 +21,26 @@ _defaults = {
     'silent_fail_threshold': '3 days',
     'notify_remote': '',
 }
+
+
+def _get_config_file(filepath=None):
+    """check if config file exists in fs. if `filepath` is not given search xdg config paths and `/etc` for a file
+    named :data:`_config_filename`.
+
+    :param filepath:
+    :return Path: path to config file or None
+    :raise snapshotbackup.exceptions.ConfigFileNotFound: when config file cannot be found
+    """
+    if filepath:
+        if os.path.isfile(filepath):
+            return filepath
+        raise ConfigFileNotFound(filepath)
+
+    _config_files = [_path / _config_filename for _path in _config_basepaths]
+    for _filepath in _config_files:
+        if os.path.isfile(_filepath):
+            return _filepath
+    raise ConfigFileNotFound(_config_files)
 
 
 def _parse_bool(line):
@@ -70,11 +96,11 @@ def parse_config(filepath, section):
     :param str filepath: path to config file
     :param str section: section in ini file to use
     :return dict:
-    :raise FileNotFoundError: when config file cannot be found
     :raise configparser.NoSectionError: when given `section` is not found
+    :raise snapshotbackup.exceptions.ConfigFileNotFound: when config file cannot be found
     """
     config = configparser.ConfigParser(defaults=_defaults)
-    config.read(filepath)
+    config.read(_get_config_file(filepath))
     if not config.has_section(section):
         raise configparser.NoSectionError(section)
     return {
