@@ -81,21 +81,24 @@ class Worker(object):
         :param bool checksum:
         :param bool dry_run:
         :param bool progress:
-        :return: None
+        :return: timestamp of snapshot or None
         """
         logger.info(f'make backup, source_dir={source_dir}, ignore={ignore}, autodecay={autodecay}, '
                     f'autoprune={autoprune}, checksum={checksum}, dry_run={dry_run}, progress={progress}, {self}')
+        snapshot_timestamp = None
         is_reachable(source_dir)
         self._assert_syncdir()
         with self.volume.lock():
             rsync(source_dir, self.volume.sync_path, exclude=ignore, checksum=checksum, progress=progress,
                   dry_run=dry_run)
             if not dry_run:
-                self.volume.make_snapshot(self.volume.sync_path, get_timestamp().isoformat())
+                snapshot_timestamp = get_timestamp().isoformat()
+                self.volume.make_snapshot(self.volume.sync_path, snapshot_timestamp)
         if autodecay:
             self.decay_backups(lambda x: True)
         if autoprune:
             self.prune_backups(lambda x: True)
+        return snapshot_timestamp
 
     def get_backups(self):
         """create list of all backups in this backup dir.

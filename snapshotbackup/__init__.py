@@ -9,6 +9,7 @@ import sys
 from abc import ABC, abstractmethod
 from pkg_resources import get_distribution
 
+from .cache import get_last_run, set_last_run
 from .notify import send_notification
 from .worker import Worker
 from .config import parse_config
@@ -219,6 +220,22 @@ class CliApp(BaseApp):
             self.abort(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
                        f'(rsync error {e.errno}, {e.error_message})')
 
+    def _get_last_run(self, worker):
+        """get datetime of latest backup. tries to fetch from backup directory, fallback from cache file.
+
+        :param worker:
+        :return: datetime object of last backup or None
+        :rtype: datetime.datetime
+        """
+        _last = None
+        try:
+            _last = worker.get_last()
+        except BackupDirNotFoundError:
+            pass
+        if _last:
+            return _last.datetime
+        return get_last_run(self.backup_name)
+
     def notify(self, message, error=False):
         """display message via libnotify.
 
@@ -272,13 +289,15 @@ class CliApp(BaseApp):
         if command in ['s', 'setup']:
             worker.setup()
         elif command in ['b', 'backup']:
-            _last = worker.get_last()
-            if _last and _last.is_after_or_equal(_config['silent_fail_threshold']):
+            _last_run = self._get_last_run(worker)
+            if _last_run and _config['silent_fail_threshold'] <= _last_run:
                 self.notify_errors = False
-            worker.make_backup(_config['source'], _config['ignore'], autodecay=_config['autodecay'],
-                               autoprune=_config['autoprune'], checksum=checksum, dry_run=dry_run, progress=progress)
+            snapshot_timestamp = worker.make_backup(_config['source'], _config['ignore'],
+                                                    autodecay=_config['autodecay'], autoprune=_config['autoprune'],
+                                                    checksum=checksum, dry_run=dry_run, progress=progress)
             if not dry_run:
                 self.notify(f'backup `{self.backup_name}` finished')
+                set_last_run(self.backup_name, snapshot_timestamp)
         elif command in ['l', 'list']:
             list_backups(worker)
         elif command in ['d', 'decay']:

@@ -55,12 +55,13 @@ def test_worker_setup(_):
 def test_worker_make_backup(mocked_rsync, mocked_reachable, _):
     worker = Worker('/path')
     worker._assert_syncdir = Mock()
-    worker.make_backup('source', ('ignore',))
+    timestamp = worker.make_backup('source', ('ignore',))
     mocked_reachable.assert_called_once()
     mocked_rsync.assert_called_once()
     worker._assert_syncdir.assert_called_once()
     worker.volume.lock.assert_called_once()
     worker.volume.make_snapshot.assert_called_once()
+    assert isinstance(timestamp, str)
 
 
 @patch('snapshotbackup.worker.is_reachable')
@@ -78,7 +79,7 @@ def test_worker_make_backup_failed(_, __, tmpdir):
 def test_worker_make_backup_dry_run(mocked_rsync, mocked_reachable, _):
     worker = Worker('/path')
     worker._assert_syncdir = Mock()
-    worker.make_backup('source', ('ignore',), dry_run=True)
+    timestamp = worker.make_backup('source', ('ignore',), dry_run=True)
     mocked_reachable.assert_called_once()
     mocked_rsync.assert_called_once()
     _, kwargs = mocked_rsync.call_args
@@ -86,6 +87,7 @@ def test_worker_make_backup_dry_run(mocked_rsync, mocked_reachable, _):
     worker._assert_syncdir.assert_called_once()
     worker.volume.lock.assert_called_once()
     worker.volume.make_snapshot.assert_not_called()
+    assert timestamp is None
 
 
 @patch('snapshotbackup.worker.BtrfsVolume')
