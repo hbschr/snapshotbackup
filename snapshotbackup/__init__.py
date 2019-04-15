@@ -227,11 +227,7 @@ class CliApp(BaseApp):
         :return: datetime object of last backup or None
         :rtype: datetime.datetime
         """
-        _last = None
-        try:
-            _last = worker.get_last()
-        except BackupDirNotFoundError:
-            pass
+        _last = worker.get_last()
         if _last:
             return _last.datetime
         return get_last_run(self.backup_name)

@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime
 
+from .exceptions import BackupDirNotFoundError
 from .subprocess import is_reachable, rsync
 from .timestamps import earliest_time, get_human_readable_timedelta, get_timestamp, is_same_day, is_same_week, \
     is_timestamp, parse_timestamp
@@ -126,10 +127,10 @@ class Worker(object):
         :return: latest backup or None
         :rtype: snapshotbackup.backup.Backup
         """
-        _list = self.get_backups()
-        if len(_list) == 0:
+        try:
+            return self.get_backups().pop()
+        except (BackupDirNotFoundError, IndexError):
             return None
-        return _list.pop()
 
     def delete_syncdir(self):
         """deletes sync dir when found, otherwise nothing.
