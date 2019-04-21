@@ -195,13 +195,15 @@ class Lock(object):
     >>> import os
     >>> from snapshotbackup.volume import Lock
     >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(os.path.join(path, 'lock')):
+    ...     lockfile = os.path.join(path, 'lock')
+    ...     with Lock(lockfile):
     ...         pass
-    ...     with Lock(os.path.join(path, 'lock')):
+    ...     with Lock(lockfile):
     ...         pass
     >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(os.path.join(path, 'lock')):
-    ...         with Lock(os.path.join(path, 'lock')):
+    ...     lockfile = os.path.join(path, 'lock')
+    ...     with Lock(lockfile):
+    ...         with Lock(lockfile):
     ...             pass
     Traceback (most recent call last):
     snapshotbackup.exceptions.LockedError: ...
@@ -211,8 +213,9 @@ class Lock(object):
     Traceback (most recent call last):
     FileNotFoundError: ...
     >>> with tempfile.TemporaryDirectory() as path:
-    ...     with Lock(os.path.join(path, 'lock')):
-    ...         os.remove(os.path.join(path, 'lock'))
+    ...     lockfile = os.path.join(path, 'lock')
+    ...     with Lock(lockfile):
+    ...         os.remove(lockfile)
     Traceback (most recent call last):
     FileNotFoundError: ...
     """
