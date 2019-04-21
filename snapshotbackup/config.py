@@ -10,7 +10,7 @@ from .timestamps import parse_human_readable_relative_dates
 
 
 _config_filename = 'snapshotbackup.ini'
-_config_basepaths = [XDG_CONFIG_HOME, *XDG_CONFIG_DIRS, Path('/etc')]
+_config_basepaths = (XDG_CONFIG_HOME, *XDG_CONFIG_DIRS, Path('/etc'))
 _defaults = {
     'ignore': '',
     'retain_all': '1 day',
@@ -36,7 +36,7 @@ def _get_config_file(filepath=None):
             return filepath
         raise ConfigFileNotFound(filepath)
 
-    _config_files = [_path / _config_filename for _path in _config_basepaths]
+    _config_files = (_path / _config_filename for _path in _config_basepaths)
     for _filepath in _config_files:
         if os.path.isfile(_filepath):
             return _filepath
