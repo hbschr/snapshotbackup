@@ -78,6 +78,8 @@ class TestApp(object):
 
     def setup(self):
         self.app = snapshotbackup.CliApp()
+        self.app.backup_name = 'test_backup_name'
+        self.app.config = MagicMock()
 
     @patch('importlib.import_module')
     def test_get_journald_handler(self, mocked_systemd_journal):
@@ -123,6 +125,11 @@ class TestApp(object):
         args, _ = self.app.delete_prompt.call_args
         assert args[0].startswith('delete')
         assert args[0].endswith('name')
+
+    @patch('snapshotbackup.Worker')
+    def test_cli_app_main(self, _):
+        with pytest.raises(NotImplementedError):
+            self.app._main('not-implementd', False, False, False)
 
 
 @patch('snapshotbackup.send_notification')
