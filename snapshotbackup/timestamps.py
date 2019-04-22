@@ -24,21 +24,31 @@ def get_timestamp():
 
 def get_human_readable_timedelta(delta):
     """returns human readable string of given `delta`.
-    restricts to three units, does not round minutes to hours, but does round to full seconds.
+    restricts to two units and rounds to full minutes, but does not round hours,
+    days, etc.
 
     :param timedelta delta:
     :return str:
 
     >>> from datetime import timedelta
     >>> from snapshotbackup.timestamps import get_human_readable_timedelta
-    >>> get_human_readable_timedelta(timedelta(days=15, hours=3, minutes=59, seconds=59))
-    '2 weeks, 1 day and 3 hours'
-    >>> get_human_readable_timedelta(timedelta(minutes=2, seconds=10, milliseconds=500))
-    '2 minutes and 10 seconds'
-    >>> get_human_readable_timedelta(timedelta(seconds=10, milliseconds=501))
-    '11 seconds'
+    >>> get_human_readable_timedelta(timedelta(seconds=30))
+    '0 seconds'
+    >>> get_human_readable_timedelta(timedelta(seconds=31))
+    '1 minute'
+    >>> get_human_readable_timedelta(timedelta(minutes=1, seconds=29))
+    '1 minute'
+    >>> get_human_readable_timedelta(timedelta(minutes=1, seconds=30))
+    '2 minutes'
+    >>> get_human_readable_timedelta(timedelta(minutes=2, seconds=30))
+    '2 minutes'
+    >>> get_human_readable_timedelta(timedelta(minutes=2, seconds=31))
+    '3 minutes'
+    >>> get_human_readable_timedelta(timedelta(days=1, hours=3, minutes=59))
+    '1 day and 3 hours'
     """
-    return humanfriendly.format_timespan(round(delta.total_seconds()))
+    seconds = 60 * round(delta.total_seconds() / 60)
+    return humanfriendly.format_timespan(seconds, max_units=2)
 
 
 def parse_timestamp(string):
