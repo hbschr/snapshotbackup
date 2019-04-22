@@ -228,6 +228,9 @@ class Backup(object):
     datetime: datetime
     """when this backup was finished"""
 
+    isotimestamp: str
+    """when this backup was finished as space seperated iso string"""
+
     is_last: bool = False
     """if this backup is the latest one"""
 
@@ -262,6 +265,7 @@ class Backup(object):
         """
         self.name = name
         self.datetime = parse_timestamp(name)
+        self.isotimestamp = self.datetime.isoformat(sep=' ')
         self.decay = self.is_before(decay_before)
         self.is_retain_all = self.is_after_or_equal(retain_all_after)
         self.is_retain_daily = self.is_after_or_equal(retain_daily_after)
@@ -292,9 +296,10 @@ class Backup(object):
         >>> str(backup)
         'Backup 1970-01-01 00:00:00+00:00 (... ago)'
         """
-        iso = self.datetime.isoformat(sep=' ')
-        ago = get_human_readable_timedelta(get_timestamp() - self.datetime)
-        return f'Backup {iso} ({ago} ago)'
+        return f'Backup {self.isotimestamp} ({self.humanfriendly_timedelta()} ago)'
+
+    def humanfriendly_timedelta(self):
+        return get_human_readable_timedelta(get_timestamp() - self.datetime)
 
     def is_before(self, timestamp):
         """check if this backup completed before given timestamp.

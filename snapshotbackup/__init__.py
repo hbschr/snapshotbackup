@@ -81,7 +81,8 @@ def list_backups(worker):
     for backup in worker.get_backups():
         retain_all = backup.is_retain_all
         retain_daily = backup.is_retain_daily
-        print(f'{backup.name}'
+        print(f'{backup.isotimestamp}'
+              f'\t{backup.humanfriendly_timedelta()}'
               f'\t{"retain_all" if retain_all else "retain_daily" if retain_daily else "        "}'
               f'\t{"weekly" if backup.is_weekly else "daily" if backup.is_daily else ""}'
               f'\t{"prune candidate" if backup.prune else ""}'
