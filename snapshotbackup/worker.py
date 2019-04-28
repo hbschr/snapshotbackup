@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime
 
+from .exceptions import BackupDirNotFoundError
 from .subprocess import is_reachable, rsync
 from .timestamps import earliest_time, get_human_readable_timedelta, get_timestamp, is_same_day, is_same_week, \
     is_timestamp, parse_timestamp
@@ -81,21 +82,24 @@ class Worker(object):
         :param bool checksum:
         :param bool dry_run:
         :param bool progress:
-        :return: None
+        :return: timestamp of snapshot or None
         """
         logger.info(f'make backup, source_dir={source_dir}, ignore={ignore}, autodecay={autodecay}, '
                     f'autoprune={autoprune}, checksum={checksum}, dry_run={dry_run}, progress={progress}, {self}')
+        snapshot_timestamp = None
         is_reachable(source_dir)
         self._assert_syncdir()
         with self.volume.lock():
             rsync(source_dir, self.volume.sync_path, exclude=ignore, checksum=checksum, progress=progress,
                   dry_run=dry_run)
             if not dry_run:
-                self.volume.make_snapshot(self.volume.sync_path, get_timestamp().isoformat())
+                snapshot_timestamp = get_timestamp().isoformat()
+                self.volume.make_snapshot(self.volume.sync_path, snapshot_timestamp)
         if autodecay:
             self.decay_backups(lambda x: True)
         if autoprune:
             self.prune_backups(lambda x: True)
+        return snapshot_timestamp
 
     def get_backups(self):
         """create list of all backups in this backup dir.
@@ -123,10 +127,10 @@ class Worker(object):
         :return: latest backup or None
         :rtype: snapshotbackup.backup.Backup
         """
-        _list = self.get_backups()
-        if len(_list) == 0:
+        try:
+            return self.get_backups().pop()
+        except (BackupDirNotFoundError, IndexError):
             return None
-        return _list.pop()
 
     def delete_syncdir(self):
         """deletes sync dir when found, otherwise nothing.
@@ -224,6 +228,9 @@ class Backup(object):
     datetime: datetime
     """when this backup was finished"""
 
+    isotimestamp: str
+    """when this backup was finished as space seperated iso string"""
+
     is_last: bool = False
     """if this backup is the latest one"""
 
@@ -258,6 +265,7 @@ class Backup(object):
         """
         self.name = name
         self.datetime = parse_timestamp(name)
+        self.isotimestamp = self.datetime.isoformat(sep=' ')
         self.decay = self.is_before(decay_before)
         self.is_retain_all = self.is_after_or_equal(retain_all_after)
         self.is_retain_daily = self.is_after_or_equal(retain_daily_after)
@@ -288,9 +296,10 @@ class Backup(object):
         >>> str(backup)
         'Backup 1970-01-01 00:00:00+00:00 (... ago)'
         """
-        iso = self.datetime.isoformat(sep=' ')
-        ago = get_human_readable_timedelta(get_timestamp() - self.datetime)
-        return f'Backup {iso} ({ago} ago)'
+        return f'Backup {self.isotimestamp} ({self.humanfriendly_timedelta()} ago)'
+
+    def humanfriendly_timedelta(self):
+        return get_human_readable_timedelta(get_timestamp() - self.datetime)
 
     def is_before(self, timestamp):
         """check if this backup completed before given timestamp.

@@ -51,6 +51,19 @@ class CommandNotFoundError(Error):
         self.command = command
 
 
+class ConfigFileNotFound(Error):
+    """config file not found.
+
+    >>> from snapshotbackup.exceptions import ConfigFileNotFound
+    >>> raise ConfigFileNotFound(('file1', 'file2'))
+    Traceback (most recent call last):
+    snapshotbackup.exceptions.ConfigFileNotFound: ... ('file1', 'file2')
+    """
+
+    def __init__(self, filepath):
+        super().__init__(f'Configfile not found: {filepath}')
+
+
 class LockedError(Error):
     """already locked.
 

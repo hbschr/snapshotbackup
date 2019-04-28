@@ -30,13 +30,14 @@ setup(
         'psutil>=5.4.8',
         'python-dateutil>=2.7.2',
         'pytz>=2018.4',  # needed by `dateparser`
+        'xdg>=4.0.0',
     ],
     extras_require={
         'dev': [
             'coverage>=4.5.2',
             'flake8>=3.6.0',
-            'pytest >=4.0.1, <4.1.0',
-            'pytest-cov>=2.6.0',
+            'pytest>=4.0.1',
+            'pytest-cov>=2.6.1',
             'pytest-mccabe>=0.1',
             'sphinx>=1.8.2',
             'tox>=3.5.3',

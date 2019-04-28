@@ -73,7 +73,7 @@ def rsync(source, target, exclude=(), checksum=False, progress=False, dry_run=Fa
 
     :param str source: path to read from
     :param str target: path to write to
-    :param str exclude: paths to exclude
+    :param tuple exclude: paths to exclude
     :param bool progress: show some progress information
     :raise SyncFailedError: when sync is interrupted
     :return: None
