@@ -39,7 +39,7 @@ setup(
             'pytest>=4.0.1',
             'pytest-cov>=2.6.1',
             'pytest-mccabe>=0.1',
-            'sphinx>=1.8.2',
+            'sphinx>=2.0.1',
             'tox>=3.5.3',
         ],
         'ci': [
