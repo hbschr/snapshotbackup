@@ -1,5 +1,6 @@
+dist: xenial   # required for Python >= 3.7
 language: python
-python: '3.7-dev'
+python: '3.7'
 sudo: required
 install:
   - pip install tox
