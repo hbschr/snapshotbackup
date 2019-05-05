@@ -5,6 +5,8 @@ script  := snapshotbackup
 config  := demo/config.ini
 opts    :=
 
+export XDG_CACHE_HOME = $(mnt_dir)/cache
+
 .NOTPARALLEL:
 
 help:
@@ -46,9 +48,8 @@ delete:
 
 test: mount-fs version setup backup sleep backup-checksum list prune decay delete clean
 
-.IGNORE: clean
 .PHONY: clean
 clean:
-	sudo umount $(mnt_dir)
-	rmdir $(mnt_dir)
-	rm $(isofile)
+	-sudo umount $(mnt_dir)
+	-rmdir $(mnt_dir)
+	-rm $(isofile)
