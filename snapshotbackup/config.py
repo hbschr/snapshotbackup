@@ -77,7 +77,7 @@ def _parse_ignore(line):
     ('double quoted string with , comma',)
     >>> _parse_ignore('42')
     ('42',)
-    >>> len(_parse_ignore('string with escaped \\, comma')) == 1
+    >>> len(_parse_ignore(r'string with escaped \\, comma')) == 1
     False
     >>> len(_parse_ignore("'single quoted string with , comma'")) == 1
     False
