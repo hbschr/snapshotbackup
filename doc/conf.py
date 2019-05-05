@@ -177,16 +177,7 @@ intersphinx_mapping = {
 
 # Options for autodoc extension
 
-# include private menbers in autodoc.
-autodoc_default_flags = ['private-members']
-
-
-# include `__init__` in doc
-def skip(app, what, name, obj, skip, options):
-    if name in ('__call__', '__init__'):
-        return False
-    return skip
-
-
-def setup(app):
-    app.connect('autodoc-skip-member', skip)
+autodoc_default_options = {
+    'private-members': True,
+    'special-members': '__init__, __call__',
+}
