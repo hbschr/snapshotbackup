@@ -29,7 +29,6 @@ setup(
         'humanfriendly>=4.17',
         'psutil>=5.4.8',
         'python-dateutil>=2.7.2',
-        'pytz>=2018.4',  # needed by `dateparser`
         'xdg>=4.0.0',
     ],
     extras_require={
