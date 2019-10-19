@@ -1,14 +1,14 @@
+dist: xenial   # required for Python >= 3.7
 language: python
-python: '3.7-dev'
+python:
+  - '3.7'
+  - '3.8-dev'
 sudo: required
 install:
-  - pip install -r requirements.txt
-  - pip install .
+  - pip install tox
 script:
-  - make check
-  - make doc
-  - make -f makefile.demo test
   - tox
+  - tox -e demo
 after_success:
   - coveralls
 deploy:

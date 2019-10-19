@@ -29,7 +29,6 @@ setup(
         'humanfriendly>=4.17',
         'psutil>=5.4.8',
         'python-dateutil>=2.7.2',
-        'pytz>=2018.4',  # needed by `dateparser`
         'xdg>=4.0.0',
     ],
     extras_require={
@@ -39,7 +38,7 @@ setup(
             'pytest>=4.0.1',
             'pytest-cov>=2.6.1',
             'pytest-mccabe>=0.1',
-            'sphinx>=1.8.2',
+            'sphinx>=2.0.1',
             'tox>=3.5.3',
         ],
         'ci': [
@@ -59,5 +58,6 @@ setup(
         'Topic :: System :: Archiving :: Backup',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
 )

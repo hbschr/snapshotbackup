@@ -50,7 +50,7 @@ def test_is_reachable_error(tmpdir):
 @patch('snapshotbackup.subprocess.run')
 def test_rsync_success(mocked_run):
     snapshotbackup.subprocess.rsync('source', 'target')
-    assert mocked_run.call_count == 2
+    mocked_run.assert_called_once()
 
 
 @patch('snapshotbackup.subprocess.run', side_effect=subprocess.CalledProcessError(42, 'command'))
@@ -79,13 +79,13 @@ def test_rsync_dry_run(mocked_run):
 @patch('snapshotbackup.subprocess.run')
 def test_create_subvolume(mocked_run):
     snapshotbackup.subprocess.create_subvolume('path')
-    assert mocked_run.call_count == 2
+    mocked_run.assert_called_once()
 
 
 @patch('snapshotbackup.subprocess.run')
 def test_delete_subvolume(mocked_run):
     snapshotbackup.subprocess.delete_subvolume('is_btrfs')
-    assert mocked_run.call_count == 2
+    mocked_run.assert_called_once()
 
 
 @patch('snapshotbackup.subprocess.run')
