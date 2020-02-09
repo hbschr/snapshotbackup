@@ -1,3 +1,5 @@
+# PYTHON_ARGCOMPLETE_OK
+import argcomplete
 import argparse
 import configparser
 import importlib
@@ -45,6 +47,7 @@ argument_parser.add_argument('--yes', action='store_true', help='say yes to each
                                                                 'deletion (prune, decay, destroy)')
 argument_parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
                              help='print version number and exit')
+argcomplete.autocomplete(argument_parser)
 
 
 def _yes_no_prompt(message):

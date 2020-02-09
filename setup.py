@@ -25,6 +25,7 @@ setup(
     packages=('snapshotbackup',),
     url='https://github.com/hbschr/snapshotbackup',
     install_requires=[
+        'argcomplete>=1.11.1',
         'dateparser>=0.7.0',
         'humanfriendly>=4.17',
         'psutil>=5.4.8',
