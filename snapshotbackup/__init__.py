@@ -80,7 +80,7 @@ def list_backups(worker):
     :param Worker worker:
     :return: None
     """
-    logger.info(f'list backups, {worker}')
+    logger.debug(f'list backups, {worker}')
     for backup in worker.get_backups():
         retain_all = backup.is_retain_all
         retain_daily = backup.is_retain_daily
@@ -282,7 +282,7 @@ class CliApp(BaseApp):
         :return: None
         :raise NotImplementedError: in case of unknown command
         """
-        logger.info(f'start `{self.backup_name}` w/ pid `{os.getpid()}`')
+        logger.info(f'start "{command} {self.backup_name}" w/ pid "{os.getpid()}"')
         _config = self.config
         worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
                         retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
@@ -310,7 +310,7 @@ class CliApp(BaseApp):
             worker.delete_syncdir()
         else:
             raise NotImplementedError(f'unknown command `{command}`')
-        logger.info(f'`{self.backup_name}` exit without errors')
+        logger.info(f'exit "{command} {self.backup_name}" without errors')
 
     def delete_backup_prompt(self, backup):
         """

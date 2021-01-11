@@ -112,7 +112,7 @@ def delete_subvolume(path):
     :param str path: filesystem path
     :return: None
     """
-    logger.info(f'delete subvolume `{path}`')
+    logger.debug(f'delete subvolume `{path}`')
     run('sudo', 'btrfs', 'subvolume', 'delete', path)
 
 
