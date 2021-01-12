@@ -44,4 +44,6 @@ def set_last_run(backup_name, value):
         parser.add_section(backup_name)
     parser.set(backup_name, 'last_run', str(value))
     os.makedirs(_CACHE_DIR, exist_ok=True)
-    parser.write(open(_STAT_FILE, 'w'))
+    file = open(_STAT_FILE, 'w')
+    parser.write(file)
+    file.close()
