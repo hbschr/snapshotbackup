@@ -80,7 +80,7 @@ def list_backups(worker):
     :param Worker worker:
     :return: None
     """
-    logger.info(f'list backups, {worker}')
+    logger.debug(f'list backups, {worker}')
     for backup in worker.get_backups():
         retain_all = backup.is_retain_all
         retain_daily = backup.is_retain_daily
@@ -152,7 +152,7 @@ class BaseApp(ABC):
         except ModuleNotFoundError as e:
             self.abort(f'dependency for optional feature not found, missing module: {e.name}')
         except IndexError:
-            self.abort('debugging doesn\'t go that far, remove one `-d`')
+            self.abort('debugging doesn\'t go that far, remove one "-d"')
 
     def _get_config(self, filepath, section):
         """populate `self.config`. make sure to call this first before relying on `self.config`.
@@ -165,7 +165,7 @@ class BaseApp(ABC):
         try:
             return parse_config(filepath, section)
         except configparser.NoSectionError as e:
-            self.abort(f'no configuration for `{e.section}` found')
+            self.abort(f'configuration for "{e.section}" not found')
         except (ConfigFileNotFound, TimestampParseError) as e:
             self.abort(e)
 
@@ -211,17 +211,17 @@ class CliApp(BaseApp):
         try:
             self._main(args.command, args.checksum, args.dry_run, args.progress)
         except SourceNotReachableError as e:
-            self.abort(f'source dir `{e.path}` not found, is it mounted?')
+            self.abort(f'source dir "{e.path}" not found, is it mounted?')
         except BackupDirNotFoundError as e:
-            self.abort(f'backup dir `{e.path}` not found, did you run setup and is it mounted?')
+            self.abort(f'backup dir "{e.path}" not found, did you run setup and is it mounted?')
         except BackupDirError as e:
             self.abort(e)
         except CommandNotFoundError as e:
-            self.abort(f'command `{e.command}` not found, mayhap missing software?')
+            self.abort(f'command "{e.command}" not found, mayhap missing software?')
         except LockedError as e:
-            self.abort(f'sync folder is locked, aborting. try again later or delete `{e.lockfile}`')
+            self.abort(f'sync folder is locked, aborting. try again later or delete "{e.lockfile}"')
         except SyncFailedError as e:
-            self.abort(f'backup interrupted or failed, `{e.target}` may be in an inconsistent state '
+            self.abort(f'backup interrupted or failed, "{e.target}" may be in an inconsistent state '
                        f'(rsync error {e.errno}, {e.error_message})')
 
     def _get_last_run(self, worker):
@@ -269,7 +269,7 @@ class CliApp(BaseApp):
             child.terminate()
         if self.notify_errors:
             self.notify(f'backup `{self.backup_name}` failed with error:\n{error_message}', error=True)
-        logger.error(f'`{self.backup_name}` exit with error: {error_message}')
+        logger.error(f'"{self.backup_name}" exit with error: {error_message}')
         sys.exit(1)
 
     def _main(self, command, checksum, dry_run, progress):
@@ -282,7 +282,7 @@ class CliApp(BaseApp):
         :return: None
         :raise NotImplementedError: in case of unknown command
         """
-        logger.info(f'start `{self.backup_name}` w/ pid `{os.getpid()}`')
+        logger.info(f'"{command} {self.backup_name}" start w/ pid "{os.getpid()}"')
         _config = self.config
         worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
                         retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
@@ -310,7 +310,7 @@ class CliApp(BaseApp):
             worker.delete_syncdir()
         else:
             raise NotImplementedError(f'unknown command `{command}`')
-        logger.info(f'`{self.backup_name}` exit without errors')
+        logger.info(f'"{command} {self.backup_name}" exit successful')
 
     def delete_backup_prompt(self, backup):
         """

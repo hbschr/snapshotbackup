@@ -84,8 +84,8 @@ class Worker(object):
         :param bool progress:
         :return: timestamp of snapshot or None
         """
-        logger.info(f'make backup, source_dir={source_dir}, ignore={ignore}, autodecay={autodecay}, '
-                    f'autoprune={autoprune}, checksum={checksum}, dry_run={dry_run}, progress={progress}, {self}')
+        logger.debug(f'make backup, source_dir={source_dir}, ignore={ignore}, autodecay={autodecay}, '
+                     f'autoprune={autoprune}, checksum={checksum}, dry_run={dry_run}, progress={progress}, {self}')
         snapshot_timestamp = None
         is_reachable(source_dir)
         self._assert_syncdir()
@@ -137,7 +137,7 @@ class Worker(object):
 
         :return: None
         """
-        logger.info(f'delete sync dir, {self}')
+        logger.debug(f'delete sync dir, {self}')
         self.volume.assure_writable()
         if os.path.isdir(self.volume.sync_path):
             self.volume.delete_subvolume(self.volume.sync_path)
@@ -160,7 +160,7 @@ class Worker(object):
         :param callable prompt: will be called for each deletion, must return `True` to authenticate.
         :return: None
         """
-        logger.info(f'decay backups, {self}')
+        logger.debug(f'decay backups, {self}')
         self.volume.assure_writable()
         for to_decay in [_b for _b in self.get_backups() if _b.decay]:
             if prompt(to_decay):
@@ -172,7 +172,7 @@ class Worker(object):
         :param callable prompt: will be called for each deletion, must return `True` to authenticate.
         :return: None
         """
-        logger.info(f'prune backups, {self}')
+        logger.debug(f'prune backups, {self}')
         self.volume.assure_writable()
         for to_be_pruned in [_b for _b in self.get_backups() if _b.prune]:
             if prompt(to_be_pruned):

@@ -86,14 +86,14 @@ def rsync(source, target, exclude=(), checksum=False, progress=False, dry_run=Fa
         args.append('--checksum')
     if dry_run:
         args.append('--dry-run')
-        print(f'dry run, no changes will be made on disk, this is what rsync would do:')
+        print('dry run, no changes will be made on disk, this is what rsync would do:')
     try:
         run(*args, show_output=progress or dry_run)
     except subprocess.CalledProcessError as e:
         logger.debug(f'raise `SyncFailedError` after catching `{e}`')
         raise SyncFailedError(target, e.returncode) from e
     if dry_run:
-        print(f'dry run, no changes were made on disk')
+        print('dry run, no changes were made on disk')
 
 
 def create_subvolume(path):
@@ -112,7 +112,7 @@ def delete_subvolume(path):
     :param str path: filesystem path
     :return: None
     """
-    logger.info(f'delete subvolume `{path}`')
+    logger.debug(f'delete subvolume `{path}`')
     run('sudo', 'btrfs', 'subvolume', 'delete', path)
 
 
