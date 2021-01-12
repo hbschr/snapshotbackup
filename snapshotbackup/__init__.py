@@ -282,7 +282,7 @@ class CliApp(BaseApp):
         :return: None
         :raise NotImplementedError: in case of unknown command
         """
-        logger.info(f'start "{command} {self.backup_name}" w/ pid "{os.getpid()}"')
+        logger.info(f'"{command} {self.backup_name}" start w/ pid "{os.getpid()}"')
         _config = self.config
         worker = Worker(_config['backups'], retain_all_after=_config['retain_all_after'],
                         retain_daily_after=_config['retain_daily_after'], decay_before=_config['decay_before'])
@@ -310,7 +310,7 @@ class CliApp(BaseApp):
             worker.delete_syncdir()
         else:
             raise NotImplementedError(f'unknown command `{command}`')
-        logger.info(f'exit "{command} {self.backup_name}" without errors')
+        logger.info(f'"{command} {self.backup_name}" exit successful')
 
     def delete_backup_prompt(self, backup):
         """
