@@ -28,7 +28,7 @@ setup(
         'argcomplete>=1.11.1',
         'dateparser>=0.7.0',
         'humanfriendly>=4.17',
-        'psutil>=5.4.8',
+        'psutil>=5.6.6',
         'python-dateutil>=2.7.2',
         'xdg>=4.0.0',
     ],
