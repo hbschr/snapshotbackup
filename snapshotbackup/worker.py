@@ -85,7 +85,7 @@ class Worker(object):
         :return: timestamp of snapshot or None
         """
         logger.debug(f'make backup, source_dir={source_dir}, ignore={ignore}, autodecay={autodecay}, '
-                    f'autoprune={autoprune}, checksum={checksum}, dry_run={dry_run}, progress={progress}, {self}')
+                     f'autoprune={autoprune}, checksum={checksum}, dry_run={dry_run}, progress={progress}, {self}')
         snapshot_timestamp = None
         is_reachable(source_dir)
         self._assert_syncdir()
