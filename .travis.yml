@@ -5,11 +5,12 @@ python:
   - '3.9'
 sudo: required
 install:
-  - pip install tox
+  - pip install .[dev,ci]
 script:
   - tox
   - tox -e demo
 after_success:
+  - make test
   - coveralls
 deploy:
   provider: pypi
