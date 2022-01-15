@@ -95,9 +95,9 @@ class Worker(object):
             if not dry_run:
                 snapshot_timestamp = get_timestamp().isoformat()
                 self.volume.make_snapshot(self.volume.sync_path, snapshot_timestamp)
-        if autodecay:
+        if autodecay and not dry_run:
             self.decay_backups(lambda x: True)
-        if autoprune:
+        if autoprune and not dry_run:
             self.prune_backups(lambda x: True)
         return snapshot_timestamp
 
