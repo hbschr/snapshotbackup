@@ -1,6 +1,7 @@
 # workbench
 *~
 /.idea
+/.vscode
 /playground
 /doc/Makefile
 
