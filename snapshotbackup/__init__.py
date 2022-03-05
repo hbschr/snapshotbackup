@@ -211,7 +211,7 @@ class CliApp(BaseApp):
         try:
             self._main(args.command, args.checksum, args.dry_run, args.progress)
         except SourceNotReachableError as e:
-            self.abort(f'source dir "{e.path}" not found, is it mounted?')
+            self.abort(f'source dir "{e.path}" not found')
         except BackupDirNotFoundError as e:
             self.abort(f'backup dir "{e.path}" not found, did you run setup and is it mounted?')
         except BackupDirError as e:
