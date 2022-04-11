@@ -202,8 +202,8 @@ class CliApp(BaseApp):
         :exit: calls :func:`snapshotbackup.CliApp.abort` in case of error
         """
         args = argument_parser.parse_args(args=args)
-        self._configure_logger(args.debug, args.silent)
         self.backup_name = args.name
+        self._configure_logger(args.debug, args.silent)
         self.config = self._get_config(args.config, self.backup_name)
         if args.source:
             self.config.update({'source': args.source})
