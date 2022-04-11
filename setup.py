@@ -42,9 +42,6 @@ setup(
             'sphinx>=2.0.1',
             'tox>=3.5.3',
         ],
-        'ci': [
-            'coveralls>=1.5.1',
-        ],
         'journald': ['systemd-python>=234'],
     },
     entry_points={
