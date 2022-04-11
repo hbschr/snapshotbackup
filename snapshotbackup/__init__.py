@@ -254,6 +254,7 @@ class CliApp(BaseApp):
         >>> app.name = 'application_name'
         >>> app.backup_name = 'backup_name'
         >>> app.config = {'notify_remote': None}
+        >>> app.notify = Mock()
         >>> try:
         ...     app.abort('xxx')
         ... except SystemExit as e:
