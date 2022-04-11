@@ -104,8 +104,12 @@ dev env
 ```commandline
 virtualenv .env -p python3
 . .env/bin/activate
-pip install -r requirements.txt
-pip install -e .                    # or pip install -e .[journald]
+pip install -e .[dev]  # or pip install -e .[dev,journald]
+```
+
+on zsh you may need to quote:
+```
+pip install -e ".[dev]"
 ```
 
 
