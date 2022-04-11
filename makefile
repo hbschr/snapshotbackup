@@ -24,15 +24,12 @@ demo:
 clean-doc:
 	rm -rf doc/api doc/build doc/doctest
 
-clean-git:
-	find . -type f -name "*.orig" -delete
-
 clean: clean-doc
 	rm -rf __pycache__ */__pycache__
 	rm -rf .pytest_cache/ .tox/ .eggs/
 	rm -f .coverage
 	rm -rf build/ dist/
 
-distclean: clean clean-git
+distclean: clean
 	rm -rf *.egg-info/
 	rm -rf .env/
