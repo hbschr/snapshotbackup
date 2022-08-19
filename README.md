@@ -40,7 +40,6 @@ retain_all = '1 week'
 ; '1', 'true' or 'True' for `True`, everything else is `False`
 autodecay = 1
 autoprune = true
-notify_remote = user@host
 ```
 
 
@@ -68,14 +67,6 @@ retention policy
 -   the latest backup is always preserved
 
 `decay` removes all backups older than configured `decay`.
-
-
-notification
---
-
-when running via cron or using `notify_remote` you may need to add
-`DBUS_SESSION_BUS_ADDRESS` to execution environment, e.g.
-`DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus snapshotbackup backup data1`
 
 
 automatization

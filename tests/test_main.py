@@ -130,35 +130,3 @@ class TestApp(object):
     def test_cli_app_main(self, _):
         with pytest.raises(NotImplementedError):
             self.app._main('not-implementd', False, False, False)
-
-
-@patch('snapshotbackup.send_notification')
-def test_notify(mocked_notify):
-    snapshotbackup.CliApp().notify('message')
-    mocked_notify.assert_called_once()
-    args, kwargs = mocked_notify.call_args
-    assert args[1] == 'message'
-    assert kwargs.get('error') is False
-    assert kwargs.get('notify_remote') is None
-
-
-@patch('snapshotbackup.send_notification')
-def test_notify_error(mocked_notify):
-    snapshotbackup.CliApp().notify('message', error=True)
-    mocked_notify.assert_called_once()
-    args, kwargs = mocked_notify.call_args
-    assert args[1] == 'message'
-    assert kwargs.get('error') is True
-    assert kwargs.get('notify_remote') is None
-
-
-@patch('snapshotbackup.send_notification')
-def test_notify_remote(mocked_notify):
-    app = snapshotbackup.CliApp()
-    app.config = {'notify_remote': 'remote'}
-    app.notify('message')
-    mocked_notify.assert_called_once()
-    args, kwargs = mocked_notify.call_args
-    assert args[1] == 'message'
-    assert kwargs.get('error') is False
-    assert kwargs.get('notify_remote') == 'remote'

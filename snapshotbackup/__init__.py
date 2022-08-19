@@ -12,7 +12,6 @@ from abc import ABC, abstractmethod
 from pkg_resources import get_distribution
 
 from .cache import get_last_run, set_last_run
-from .notify import send_notification
 from .worker import Worker
 from .config import parse_config
 from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, ConfigFileNotFound, \
@@ -188,9 +187,6 @@ class CliApp(BaseApp):
     delete_prompt: callable
     """prompt to use for deletion of backup snapshots"""
 
-    notify_errors: bool = True
-    """if `True` errors will be notified"""
-
     def __call__(self, args=sys.argv[1:]):
         """entry point for this `CliApp`.
 
@@ -233,31 +229,20 @@ class CliApp(BaseApp):
             return _last.datetime
         return get_last_run(self.backup_name)
 
-    def notify(self, message, error=False):
-        """display message via libnotify.
-
-        :param str message:
-        :param bool error:
-        :return: None
-        """
-        send_notification(self.name, message, error=error, notify_remote=self.config.get('notify_remote'))
-
     def abort(self, error_message):
-        """log, notify and exit.
+        """log and exit.
 
         >>> from unittest.mock import Mock
         >>> from snapshotbackup import CliApp
         >>> app = CliApp()
         >>> app.name = 'application_name'
         >>> app.backup_name = 'backup_name'
-        >>> app.config = {'notify_remote': None}
-        >>> app.notify = Mock()
         >>> try:
         ...     app.abort('xxx')
         ... except SystemExit as e:
         ...     assert e.code == 1
 
-        :param str error_message: will be logged and notified
+        :param str error_message: will be logged
         :return: this function never returns, it always exits
         :exit 1: error
         """
@@ -265,8 +250,6 @@ class CliApp(BaseApp):
         for child in psutil.Process().children(recursive=True):
             logger.debug(f'terminate child process {child.pid}')
             child.terminate()
-        if self.notify_errors:
-            self.notify(f'backup `{self.backup_name}` failed with error:\n{error_message}', error=True)
         logger.error(f'"{self.backup_name}" exit with error: {error_message}')
         sys.exit(1)
 
@@ -287,14 +270,10 @@ class CliApp(BaseApp):
         if command in ['s', 'setup']:
             worker.setup()
         elif command in ['b', 'backup']:
-            _last_run = self._get_last_run(worker)
-            if _last_run and _config['silent_fail_threshold'] <= _last_run:
-                self.notify_errors = False
             snapshot_timestamp = worker.make_backup(_config['source'], _config['ignore'],
                                                     autodecay=_config['autodecay'], autoprune=_config['autoprune'],
                                                     checksum=checksum, dry_run=dry_run, progress=progress)
             if not dry_run:
-                self.notify(f'backup `{self.backup_name}` finished')
                 set_last_run(self.backup_name, snapshot_timestamp)
         elif command in ['l', 'list']:
             list_backups(worker)

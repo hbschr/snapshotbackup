@@ -18,8 +18,6 @@ _defaults = {
     'decay': '1 year',
     'autodecay': '',
     'autoprune': '',
-    'silent_fail_threshold': '3 days',
-    'notify_remote': '',
 }
 
 
@@ -112,6 +110,4 @@ def parse_config(filepath, section):
         'decay_before': parse_human_readable_relative_dates(config[section]['decay']),
         'autodecay': _parse_bool(config[section]['autodecay']),
         'autoprune': _parse_bool(config[section]['autoprune']),
-        'silent_fail_threshold': parse_human_readable_relative_dates(config[section]['silent_fail_threshold']),
-        'notify_remote': config[section]['notify_remote'] or None,
     }
