@@ -11,7 +11,6 @@ import sys
 from abc import ABC, abstractmethod
 from pkg_resources import get_distribution
 
-from .cache import get_last_run, set_last_run
 from .worker import Worker
 from .config import parse_config
 from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundError, ConfigFileNotFound, \
@@ -217,18 +216,6 @@ class CliApp(BaseApp):
             self.abort(f'backup interrupted or failed, "{e.target}" may be in an inconsistent state '
                        f'(rsync error {e.errno}, {e.error_message})')
 
-    def _get_last_run(self, worker):
-        """get datetime of latest backup. tries to fetch from backup directory, fallback from cache file.
-
-        :param worker:
-        :return: datetime object of last backup or None
-        :rtype: datetime.datetime
-        """
-        _last = worker.get_last()
-        if _last:
-            return _last.datetime
-        return get_last_run(self.backup_name)
-
     def abort(self, error_message):
         """log and exit.
 
@@ -270,11 +257,9 @@ class CliApp(BaseApp):
         if command in ['s', 'setup']:
             worker.setup()
         elif command in ['b', 'backup']:
-            snapshot_timestamp = worker.make_backup(_config['source'], _config['ignore'],
-                                                    autodecay=_config['autodecay'], autoprune=_config['autoprune'],
-                                                    checksum=checksum, dry_run=dry_run, progress=progress)
-            if not dry_run:
-                set_last_run(self.backup_name, snapshot_timestamp)
+            worker.make_backup(_config['source'], _config['ignore'],
+                               autodecay=_config['autodecay'], autoprune=_config['autoprune'],
+                               checksum=checksum, dry_run=dry_run, progress=progress)
         elif command in ['l', 'list']:
             list_backups(worker)
         elif command in ['d', 'decay']:
