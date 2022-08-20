@@ -130,7 +130,7 @@ def is_same_hour(date1: datetime, date2: datetime) -> bool:
     >>> is_same_hour(datetime(1970, 1, 1, 1), datetime(1970, 1, 2, 1))
     False
     """
-    assert(date1 < date2)
+    assert date1 < date2
     return date1.hour == date2.hour and date2 - date1 < timedelta(hours=1)
 
 
@@ -150,7 +150,7 @@ def is_same_day(date1: datetime, date2: datetime) -> bool:
     >>> is_same_day(datetime(1970, 1, 1), datetime(1970, 2, 1))
     False
     """
-    assert(date1 < date2)
+    assert date1 < date2
     return date1.day == date2.day and date2 - date1 < timedelta(days=1)
 
 
@@ -172,5 +172,5 @@ def is_same_week(date1: datetime, date2: datetime) -> bool:
     """
     _, week1, _ = date1.isocalendar()
     _, week2, _ = date2.isocalendar()
-    assert(date1 < date2)
+    assert date1 < date2
     return week1 == week2 and date2 - date1 < timedelta(weeks=1)
