@@ -131,6 +131,17 @@ def test_worker_get_backups(_, tmpdir):
     os.mkdir(os.path.join(tmpdir, '1989-11-09T00+00'))
     assert len(worker.get_backups()) == 2
 
+    backups = worker.get_backups()
+    first = backups[0]
+    assert first.is_daily
+    assert first.is_weekly
+    assert not first.is_last
+    last = backups.pop()
+    assert last.is_daily
+    assert not last.is_weekly
+    assert last.is_last
+    assert last.name == '1989-11-10T00+00'
+
 
 @patch('os.walk')
 def test_worker_get_backups_missing_branch(_, tmpdir):

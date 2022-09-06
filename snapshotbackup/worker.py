@@ -118,7 +118,7 @@ class Worker(object):
         for _index, _dir in enumerate(dirs):
             previous = backups[len(backups) - 1] if len(backups) > 0 else None
             backups.append(Backup(_dir, self.retain_all_after, self.retain_daily_after, self.decay_before,
-                                  previous=previous, is_last=_index == len(dirs)))
+                                  previous=previous, is_last=_index == len(dirs) - 1))
         return backups
 
     def get_last(self):
