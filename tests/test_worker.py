@@ -1,5 +1,6 @@
 import os
 import pytest
+from datetime import datetime, timezone
 from unittest.mock import patch, Mock
 
 from snapshotbackup.exceptions import SyncFailedError
@@ -120,27 +121,164 @@ def test_worker_make_backup_autoprune(_, __, ___):
     assert args[0]('backup') is True
 
 
+@pytest.mark.parametrize('config', (
+    {
+        '1970-01-02T00+00': True,
+        '1970-01-01T00+00': False,
+    },
+))
 @patch('snapshotbackup.worker.BtrfsVolume')
-def test_worker_get_backups(_, tmpdir):
+def test_worker_get_backups_count_and_order(_, tmpdir, config):
     worker = Worker(tmpdir)
     worker.volume.path = tmpdir
+
     assert len(worker.get_backups()) == 0
     worker.volume.assure_path.assert_called_once()
-    os.mkdir(os.path.join(tmpdir, '1989-11-10T00+00'))
-    assert len(worker.get_backups()) == 1
-    os.mkdir(os.path.join(tmpdir, '1989-11-09T00+00'))
-    assert len(worker.get_backups()) == 2
 
-    backups = worker.get_backups()
-    first = backups[0]
-    assert first.is_daily
-    assert first.is_weekly
-    assert not first.is_last
-    last = backups.pop()
-    assert last.is_daily
-    assert not last.is_weekly
-    assert last.is_last
-    assert last.name == '1989-11-10T00+00'
+    for index, name in enumerate(config.keys()):
+        os.mkdir(os.path.join(tmpdir, name))
+        assert len(worker.get_backups()) == index + 1
+
+    for backup in worker.get_backups():
+        assert backup.is_last == config[backup.name]
+
+
+@pytest.mark.parametrize('config', (
+    {
+        '1970-01-01T01+00': True,
+        '1970-01-01T15+00': False,
+    },
+    {
+        '1970-01-01T01+00': True,
+        '1970-01-01T02+00': True,
+    },
+))
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_get_backups_decay(_, tmpdir, config):
+    decay_before = datetime(1970, 1, 1, 10, tzinfo=timezone.utc)
+
+    worker = Worker(tmpdir, decay_before=decay_before)
+    worker.volume.path = tmpdir
+
+    for name in config.keys():
+        os.mkdir(os.path.join(tmpdir, name))
+
+    for backup in worker.get_backups():
+        assert backup.decay == config[backup.name]
+
+
+@pytest.mark.parametrize('config', (
+    {
+        '1970-01-01T00+00': True,
+        '1970-01-01T01+00': False,
+        '1970-01-02T00+00': True,
+        '1970-01-02T23:59+00': False,
+    },
+))
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_get_backups_daily(_, tmpdir, config):
+    worker = Worker(tmpdir)
+    worker.volume.path = tmpdir
+
+    for name in config.keys():
+        os.mkdir(os.path.join(tmpdir, name))
+
+    for backup in worker.get_backups():
+        assert backup.is_daily == config[backup.name]
+
+
+@pytest.mark.parametrize('config', (
+    {
+        '1970-01-01T00+00': True,
+        '1970-01-04T00+00': False,
+        '1970-01-11T00+00': True,
+        '1970-01-11T23:59+00': False,
+    },
+))
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_get_backups_weekly(_, tmpdir, config):
+    worker = Worker(tmpdir)
+    worker.volume.path = tmpdir
+
+    for name in config.keys():
+        os.mkdir(os.path.join(tmpdir, name))
+
+    for backup in worker.get_backups():
+        assert backup.is_weekly == config[backup.name]
+
+
+@pytest.mark.parametrize('config', (
+    {
+        '1970-01-01T00+00': False,
+        '1970-01-02T00+00': True,
+        '1970-01-05T00+00': False,
+        '1970-01-06T00+00': False,  # last is prune-protected
+    },
+))
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_get_backups_prune_weekly(_, tmpdir, config):
+    retain_all_after = datetime(2000, 1, 1, tzinfo=timezone.utc)
+    retain_daily_after = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+    worker = Worker(tmpdir, retain_all_after=retain_all_after, retain_daily_after=retain_daily_after)
+    worker.volume.path = tmpdir
+
+    for name in config.keys():
+        os.mkdir(os.path.join(tmpdir, name))
+
+    for backup in worker.get_backups():
+        assert backup.prune == config[backup.name]
+
+
+@pytest.mark.parametrize('config', (
+    {
+        '1970-01-05T00+00': False,
+        '1970-01-06T00+00': True,
+        '1970-01-08T00+00': False,
+        '1970-01-09T00+00': False,
+        '1970-01-09T01+00': False,  # last is prune-protected
+    },
+))
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_get_backups_prune_daily(_, tmpdir, config):
+    retain_all_after = datetime(2000, 1, 1, tzinfo=timezone.utc)
+    retain_daily_after = datetime(1970, 1, 7, tzinfo=timezone.utc)
+
+    worker = Worker(tmpdir, retain_all_after=retain_all_after, retain_daily_after=retain_daily_after)
+    worker.volume.path = tmpdir
+
+    for name in config.keys():
+        os.mkdir(os.path.join(tmpdir, name))
+
+    for backup in worker.get_backups():
+        assert backup.prune == config[backup.name]
+
+
+@pytest.mark.parametrize('config', (
+    {
+        '1970-01-01T00+00': False,
+        '1970-01-01T05+00': True,
+        '1970-01-01T15+00': False,
+        '1970-01-01T20+00': False,  # last is prune-protected
+    },
+    {
+        '1970-01-01T00+00': False,
+        '1970-01-01T05+00': False,  # last is prune-protected
+    },
+))
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_get_backups_prune_retain_all(_, tmpdir, config):
+    retain_all_after = datetime(1970, 1, 1, 12, tzinfo=timezone.utc)
+    retain_daily_after = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+    worker = Worker(tmpdir, retain_all_after=retain_all_after, retain_daily_after=retain_daily_after)
+    worker.volume.path = tmpdir
+
+    for name in config.keys():
+        os.mkdir(os.path.join(tmpdir, name))
+
+    for backup in worker.get_backups():
+        assert backup.prune == config[backup.name]
 
 
 @patch('os.walk')
