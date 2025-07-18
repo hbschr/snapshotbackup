@@ -9,7 +9,7 @@ import psutil
 import signal
 import sys
 from abc import ABC, abstractmethod
-from pkg_resources import get_distribution
+from importlib.metadata import version
 
 from .worker import Worker
 from .config import parse_config
@@ -17,7 +17,7 @@ from .exceptions import BackupDirError, BackupDirNotFoundError, CommandNotFoundE
     LockedError, SourceNotReachableError, SyncFailedError, TimestampParseError
 from .subprocess import DEBUG_SHELL
 
-__version__ = get_distribution(__name__).version
+__version__ = version(__name__)
 logger = logging.getLogger(__name__)
 
 
