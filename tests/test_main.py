@@ -74,59 +74,59 @@ def test_list_backups():
 
 class TestApp(object):
 
-    app: snapshotbackup.CliApp
-
-    def setup(self):
-        self.app = snapshotbackup.CliApp()
-        self.app.backup_name = 'test_backup_name'
-        self.app.config = MagicMock()
+    @pytest.fixture
+    def app(self):
+        app = snapshotbackup.CliApp()
+        app.backup_name = 'test_backup_name'
+        app.config = MagicMock()
+        return app
 
     @patch('importlib.import_module')
-    def test_get_journald_handler(self, mocked_systemd_journal):
-        handler = self.app._get_journald_handler()
+    def test_get_journald_handler(self, mocked_systemd_journal, app):
+        handler = app._get_journald_handler()
         assert handler._mock_name == mocked_systemd_journal.JournalHandler()._mock_name
 
     @patch('importlib.import_module', side_effect=ModuleNotFoundError('message'))
-    def test_get_journald_handler_fail(self, _):
+    def test_get_journald_handler_fail(self, _, app):
         with pytest.raises(ModuleNotFoundError):
-            self.app._get_journald_handler()
+            app._get_journald_handler()
 
     @patch('logging.basicConfig')
-    def test_configure_logger(self, mocked_basic_config):
-        self.app._configure_logger(0, False)
+    def test_configure_logger(self, mocked_basic_config, app):
+        app._configure_logger(0, False)
         mocked_basic_config.assert_called_once()
         _, kwargs = mocked_basic_config.call_args
         assert kwargs.get('handlers') is None
 
     @patch('logging.basicConfig')
-    def test_configure_logger_journald(self, mocked_basic_config):
-        self.app._get_journald_handler = Mock()
-        self.app._configure_logger(0, True)
+    def test_configure_logger_journald(self, mocked_basic_config, app):
+        app._get_journald_handler = Mock()
+        app._configure_logger(0, True)
         mocked_basic_config.assert_called_once()
         _, kwargs = mocked_basic_config.call_args
         assert isinstance(kwargs.get('handlers'), list) and len(kwargs.get('handlers')) == 1
-        assert kwargs.get('handlers')[0] == self.app._get_journald_handler()
+        assert kwargs.get('handlers')[0] == app._get_journald_handler()
 
-    def test_configure_logger_import_fail(self):
-        self.app._get_journald_handler = Mock(side_effect=ModuleNotFoundError('message'))
-        self.app.abort = Mock()
-        self.app._configure_logger(0, True)
-        self.app.abort.assert_called_once()
+    def test_configure_logger_import_fail(self, app):
+        app._get_journald_handler = Mock(side_effect=ModuleNotFoundError('message'))
+        app.abort = Mock()
+        app._configure_logger(0, True)
+        app.abort.assert_called_once()
 
-    def test_configure_logger_debug_level_fail(self):
-        self.app.abort = Mock()
-        self.app._configure_logger(10, False)
-        self.app.abort.assert_called_once()
+    def test_configure_logger_debug_level_fail(self, app):
+        app.abort = Mock()
+        app._configure_logger(10, False)
+        app.abort.assert_called_once()
 
-    def test_delete_backup_prompt(self):
-        self.app.delete_prompt = Mock()
-        self.app.delete_backup_prompt('name')
-        self.app.delete_prompt.assert_called_once()
-        args, _ = self.app.delete_prompt.call_args
+    def test_delete_backup_prompt(self, app):
+        app.delete_prompt = Mock()
+        app.delete_backup_prompt('name')
+        app.delete_prompt.assert_called_once()
+        args, _ = app.delete_prompt.call_args
         assert args[0].startswith('delete')
         assert args[0].endswith('name')
 
     @patch('snapshotbackup.Worker')
-    def test_cli_app_main(self, _):
+    def test_cli_app_main(self, _, app):
         with pytest.raises(NotImplementedError):
-            self.app._main('not-implementd', False, False, False)
+            app._main('not-implemented', False, False, False)
