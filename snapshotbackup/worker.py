@@ -113,7 +113,7 @@ class Worker(object):
             dirs = [_dir for _dir in _dirs if is_timestamp(_dir)]
             break
 
-        dirs.sort()
+        dirs.sort(key=parse_timestamp)
         backups = []
         for _index, _dir in enumerate(dirs):
             previous = backups[len(backups) - 1] if len(backups) > 0 else None

@@ -143,6 +143,20 @@ def test_worker_get_backups(_, tmpdir):
     assert last.name == '1989-11-10T00+00'
 
 
+@patch('snapshotbackup.worker.BtrfsVolume')
+def test_worker_get_backups_sort_chronologically(_, tmpdir):
+    worker = Worker(tmpdir)
+    worker.volume.path = tmpdir
+    os.mkdir(os.path.join(tmpdir, '1970-01-01 00:01+00'))
+    os.mkdir(os.path.join(tmpdir, '1970-01-01 00:02+01'))
+
+    backups = worker.get_backups()
+    first = backups[0]
+    assert first.name == '1970-01-01 00:02+01'
+    last = backups.pop()
+    assert last.name == '1970-01-01 00:01+00'
+
+
 @patch('os.walk')
 def test_worker_get_backups_missing_branch(_, tmpdir):
     worker = Worker(tmpdir)
